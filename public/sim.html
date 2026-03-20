@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flight Simulator</title>
+<script src="https://cesium.com/downloads/cesiumjs/releases/1.115/Build/Cesium/Cesium.js"></script>
+<link href="https://cesium.com/downloads/cesiumjs/releases/1.115/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { overflow: hidden; background: #000; font-family: 'Courier New', monospace; }
+
+#cesiumContainer { width: 100%; height: 100vh; }
+
+/* Hide Cesium default UI clutter */
+.cesium-viewer-toolbar,
+.cesium-viewer-animationContainer,
+.cesium-viewer-timelineContainer,
+.cesium-viewer-fullscreenContainer,
+.cesium-viewer-infoContainer,
+.cesium-viewer-geocoderContainer,
+.cesium-viewer-bottom { display: none !important; }
+.cesium-widget-credits { opacity: 0.3 !important; font-size: 10px !important; }
+
+#hud {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 10;
+}
+
+#loading {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: #0a0a0a; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; z-index: 100;
+  transition: opacity 1.5s;
+}
+#loading h1 { color: #00ff88; font-size: 2.5em; letter-spacing: 8px; margin-bottom: 10px; }
+#loading h2 { color: #446; font-size: 1em; letter-spacing: 4px; margin-bottom: 30px; font-weight: normal; }
+#loading .bar { width: 300px; height: 3px; background: #1a1a1a; border-radius: 2px; overflow: hidden; }
+#loading .bar-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #00ff88, #00aaff); transition: width 0.3s; }
+#loading p { color: #446; margin-top: 15px; font-size: 0.85em; }
+
+#logout-btn {
+  position: fixed; top: 15px; left: 15px; z-index: 12;
+  padding: 6px 14px; background: rgba(0,0,0,0.6); color: #ff6644;
+  border: 1px solid #333; font-family: 'Courier New', monospace;
+  font-size: 0.75em; border-radius: 4px; cursor: pointer;
+}
+#logout-btn:hover { border-color: #ff6644; }
+
+#controls-hint {
+  position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+  color: rgba(255,255,255,0.5); font-size: 0.8em; z-index: 11;
+  text-align: center; pointer-events: none;
+  transition: opacity 3s; line-height: 1.8;
+}
+
+#location-picker {
+  position: fixed; top: 15px; right: 15px; z-index: 12;
+  pointer-events: auto;
+}
+#location-picker select {
+  padding: 8px 12px; background: rgba(0,0,0,0.7); color: #00ff88;
+  border: 1px solid #333; font-family: 'Courier New', monospace;
+  font-size: 0.85em; border-radius: 4px; cursor: pointer; outline: none;
+}
+#location-picker select:hover { border-color: #00ff88; }
+</style>
+</head>
+<body>
+
+<button id="logout-btn" style="display:none;" onclick="logout()">LOGOUT</button>
+
+<div id="loading">
+  <h1>FLIGHT SIM</h1>
+  <h2>EARTH EDITION</h2>
+  <div class="bar"><div class="bar-fill" id="load-bar"></div></div>
+  <p id="load-text">Initializing...</p>
+</div>
+
+<div id="cesiumContainer" style="display:none;"></div>
+<canvas id="hud" style="display:none;"></canvas>
+
+<div id="controls-hint" style="display:none;">
+  W/S — Throttle &nbsp;|&nbsp; Arrow Keys — Pitch & Roll &nbsp;|&nbsp; A/D — Yaw &nbsp;|&nbsp; G — Gear &nbsp;|&nbsp; F — Flaps &nbsp;|&nbsp; B — Brakes<br>
+  C — Camera View &nbsp;|&nbsp; L — Landing Lights &nbsp;|&nbsp; N — Time of Day &nbsp;|&nbsp; T — Teleport &nbsp;|&nbsp; P — Autopilot Tour &nbsp;|&nbsp; K — Cache Stats
+</div>
+
+<div id="location-picker" style="display:none;">
+  <select id="location-select">
+    <option value="">Teleport to...</option>
+    <option value="custom">Search Location...</option>
+    <optgroup label="── US East Coast ──">
+      <option value="kjfk">New York City</option>
+      <option value="kbos">Boston</option>
+      <option value="kphl">Philadelphia</option>
+      <option value="kiad">Washington DC</option>
+      <option value="kmia">Miami</option>
+      <option value="keyw">Key West</option>
+      <option value="katl">Atlanta</option>
+      <option value="kclt">Charlotte</option>
+    </optgroup>
+    <optgroup label="── US Central ──">
+      <option value="kord">Chicago</option>
+      <option value="kmsp">Minneapolis</option>
+      <option value="kdfw">Dallas</option>
+      <option value="kiah">Houston</option>
+      <option value="kmci">Kansas City</option>
+      <option value="kden">Denver</option>
+      <option value="kstl">St. Louis</option>
+      <option value="knew">New Orleans</option>
+    </optgroup>
+    <optgroup label="── US West Coast ──">
+      <option value="klax">Los Angeles</option>
+      <option value="ksfo">San Francisco</option>
+      <option value="ksea">Seattle</option>
+      <option value="klas">Las Vegas</option>
+      <option value="kpdx">Portland</option>
+      <option value="ksan">San Diego</option>
+      <option value="kphx">Phoenix</option>
+      <option value="pafa">Fairbanks, Alaska</option>
+      <option value="phnl">Honolulu</option>
+    </optgroup>
+    <optgroup label="── Western Europe ──">
+      <option value="egll">London</option>
+      <option value="lfpg">Paris</option>
+      <option value="lemd">Madrid</option>
+      <option value="lebl">Barcelona</option>
+      <option value="lppt">Lisbon</option>
+      <option value="eham">Amsterdam</option>
+      <option value="ebci">Brussels</option>
+      <option value="lpma">Madeira</option>
+    </optgroup>
+    <optgroup label="── Central Europe ──">
+      <option value="eddb">Berlin</option>
+      <option value="eddm">Munich</option>
+      <option value="lszh">Zurich</option>
+      <option value="loww">Vienna</option>
+      <option value="lowi">Innsbruck, Austria</option>
+      <option value="lirf">Rome</option>
+      <option value="lipz">Venice</option>
+      <option value="epwa">Warsaw</option>
+      <option value="lkpr">Prague</option>
+    </optgroup>
+    <optgroup label="── Northern Europe ──">
+      <option value="ekch">Copenhagen</option>
+      <option value="essa">Stockholm</option>
+      <option value="efhk">Helsinki</option>
+      <option value="engm">Oslo</option>
+      <option value="birk">Reykjavik, Iceland</option>
+      <option value="eidw">Dublin</option>
+      <option value="egph">Edinburgh</option>
+    </optgroup>
+    <optgroup label="── Rest of World ──">
+      <option value="rjtt">Tokyo</option>
+      <option value="vhhh">Hong Kong</option>
+      <option value="omdb">Dubai</option>
+      <option value="yssy">Sydney</option>
+      <option value="fact">Cape Town</option>
+      <option value="sbrj">Rio de Janeiro</option>
+      <option value="seqm">Quito, Ecuador</option>
+      <option value="vnlk">Lukla, Nepal</option>
+      <option value="nzqn">Queenstown, NZ</option>
+      <option value="tffj">St. Barths</option>
+    </optgroup>
+  </select>
+</div>
+
+<script>
+// ─── Register Service Worker for tile caching ───
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').then(reg => {
+    console.log('Tile cache SW registered:', reg.scope);
+  }).catch(err => {
+    console.warn('SW registration failed (tiles won\'t be cached):', err);
+  });
+}
+
+// Cache stats listener
+let cacheStats = null;
+navigator.serviceWorker?.addEventListener('message', (e) => {
+  if (e.data.type === 'cache-stats') cacheStats = e.data;
+  if (e.data.type === 'cache-cleared') {
+    cacheStats = { totalMB: '0', count: 0, maxMB: '250' };
+  }
+});
+
+// ─── Locations Database ───
+const LOCATIONS = {
+  // US East Coast
+  kjfk: { name: 'New York City', lat: 40.7128, lon: -74.0060, alt: 50, heading: 310 },
+  kbos: { name: 'Boston',        lat: 42.3601, lon: -71.0589, alt: 50, heading: 40 },
+  kphl: { name: 'Philadelphia',  lat: 39.9526, lon: -75.1652, alt: 50, heading: 270 },
+  kiad: { name: 'Washington DC', lat: 38.9072, lon: -77.0369, alt: 50, heading: 10 },
+  kmia: { name: 'Miami',         lat: 25.7617, lon: -80.1918, alt: 30, heading: 90 },
+  keyw: { name: 'Key West',      lat: 24.5551, lon: -81.7800, alt: 20, heading: 270 },
+  katl: { name: 'Atlanta',       lat: 33.7490, lon: -84.3880, alt: 300, heading: 270 },
+  kclt: { name: 'Charlotte',     lat: 35.2271, lon: -80.8431, alt: 200, heading: 350 },
+  // US Central
+  kord: { name: 'Chicago',       lat: 41.8781, lon: -87.6298, alt: 200, heading: 50 },
+  kmsp: { name: 'Minneapolis',   lat: 44.9778, lon: -93.2650, alt: 260, heading: 300 },
+  kdfw: { name: 'Dallas',        lat: 32.7767, lon: -96.7970, alt: 150, heading: 350 },
+  kiah: { name: 'Houston',       lat: 29.7604, lon: -95.3698, alt: 20, heading: 310 },
+  kmci: { name: 'Kansas City',   lat: 39.0997, lon: -94.5786, alt: 250, heading: 190 },
+  kden: { name: 'Denver',        lat: 39.7392, lon: -104.9903, alt: 1600, heading: 350 },
+  kstl: { name: 'St. Louis',     lat: 38.6270, lon: -90.1994, alt: 150, heading: 120 },
+  knew: { name: 'New Orleans',   lat: 29.9511, lon: -90.0715, alt: 10, heading: 190 },
+  // US West Coast
+  klax: { name: 'Los Angeles',   lat: 34.0522, lon: -118.2437, alt: 100, heading: 250 },
+  ksfo: { name: 'San Francisco', lat: 37.7749, lon: -122.4194, alt: 100, heading: 280 },
+  ksea: { name: 'Seattle',       lat: 47.6062, lon: -122.3321, alt: 50, heading: 340 },
+  klas: { name: 'Las Vegas',     lat: 36.1699, lon: -115.1398, alt: 600, heading: 250 },
+  kpdx: { name: 'Portland',      lat: 45.5152, lon: -122.6784, alt: 50, heading: 280 },
+  ksan: { name: 'San Diego',     lat: 32.7157, lon: -117.1611, alt: 20, heading: 270 },
+  kphx: { name: 'Phoenix',       lat: 33.4484, lon: -112.0740, alt: 340, heading: 250 },
+  pafa: { name: 'Fairbanks',     lat: 64.8401, lon: -147.7200, alt: 200, heading: 200 },
+  phnl: { name: 'Honolulu',      lat: 21.3069, lon: -157.8583, alt: 10, heading: 260 },
+  // Western Europe
+  egll: { name: 'London',        lat: 51.5074, lon: -0.1278, alt: 50, heading: 270 },
+  lfpg: { name: 'Paris',         lat: 48.8566, lon: 2.3522, alt: 50, heading: 250 },
+  lemd: { name: 'Madrid',        lat: 40.4168, lon: -3.7038, alt: 700, heading: 320 },
+  lebl: { name: 'Barcelona',     lat: 41.3874, lon: 2.1686, alt: 20, heading: 250 },
+  lppt: { name: 'Lisbon',        lat: 38.7223, lon: -9.1393, alt: 80, heading: 30 },
+  eham: { name: 'Amsterdam',     lat: 52.3676, lon: 4.9041, alt: 0, heading: 60 },
+  ebci: { name: 'Brussels',      lat: 50.8503, lon: 4.3517, alt: 50, heading: 250 },
+  lpma: { name: 'Madeira',       lat: 32.6500, lon: -16.9089, alt: 200, heading: 50 },
+  // Central Europe
+  eddb: { name: 'Berlin',        lat: 52.5200, lon: 13.4050, alt: 50, heading: 260 },
+  eddm: { name: 'Munich',        lat: 48.1351, lon: 11.5820, alt: 500, heading: 260 },
+  lszh: { name: 'Zurich',        lat: 47.3769, lon: 8.5417, alt: 420, heading: 280 },
+  loww: { name: 'Vienna',        lat: 48.2082, lon: 16.3738, alt: 170, heading: 290 },
+  lowi: { name: 'Innsbruck',     lat: 47.2692, lon: 11.4041, alt: 800, heading: 80 },
+  lirf: { name: 'Rome',          lat: 41.9028, lon: 12.4964, alt: 50, heading: 160 },
+  lipz: { name: 'Venice',        lat: 45.4408, lon: 12.3155, alt: 10, heading: 40 },
+  epwa: { name: 'Warsaw',        lat: 52.2297, lon: 21.0122, alt: 100, heading: 330 },
+  lkpr: { name: 'Prague',        lat: 50.0755, lon: 14.4378, alt: 250, heading: 240 },
+  // Northern Europe
+  ekch: { name: 'Copenhagen',    lat: 55.6761, lon: 12.5683, alt: 10, heading: 220 },
+  essa: { name: 'Stockholm',     lat: 59.3293, lon: 18.0686, alt: 30, heading: 190 },
+  efhk: { name: 'Helsinki',      lat: 60.1699, lon: 24.9384, alt: 20, heading: 220 },
+  engm: { name: 'Oslo',          lat: 59.9139, lon: 10.7522, alt: 30, heading: 200 },
+  birk: { name: 'Reykjavik',     lat: 64.1466, lon: -21.9426, alt: 50, heading: 190 },
+  eidw: { name: 'Dublin',        lat: 53.3498, lon: -6.2603, alt: 30, heading: 280 },
+  egph: { name: 'Edinburgh',     lat: 55.9533, lon: -3.1883, alt: 50, heading: 240 },
+  // Rest of World
+  rjtt: { name: 'Tokyo',         lat: 35.6895, lon: 139.6917, alt: 50, heading: 340 },
+  vhhh: { name: 'Hong Kong',     lat: 22.2840, lon: 114.1555, alt: 50, heading: 250 },
+  omdb: { name: 'Dubai',         lat: 25.1972, lon: 55.2744, alt: 50, heading: 300 },
+  yssy: { name: 'Sydney',        lat: -33.8568, lon: 151.2153, alt: 50, heading: 340 },
+  fact: { name: 'Cape Town',     lat: -33.9249, lon: 18.4241, alt: 100, heading: 190 },
+  sbrj: { name: 'Rio de Janeiro', lat: -22.9068, lon: -43.1729, alt: 50, heading: 200 },
+  seqm: { name: 'Quito',         lat: -0.1807, lon: -78.4678, alt: 3000, heading: 350 },
+  vnlk: { name: 'Lukla',         lat: 27.6869, lon: 86.7298, alt: 3000, heading: 60 },
+  nzqn: { name: 'Queenstown',    lat: -45.0312, lon: 168.6626, alt: 500, heading: 50 },
+  tffj: { name: 'St. Barths',    lat: 17.8966, lon: -62.8517, alt: 50, heading: 280 },
+};
+
+// ─── Auth Check ───
+const CESIUM_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJkZWFkZjE0NC04ZjA3LTQzMDYtYjE1Ni03MDhkYjQ2MTc0NGMiLCJpZCI6NDA2Njk4LCJpYXQiOjE3NzQwMTY0MzN9.m6LD7XKPhbPozNC9BnU9lfHew0jgximeVG15YeVgXEU';
+
+async function checkAuthAndStart() {
+  try {
+    const res = await fetch('/api/check');
+    const data = await res.json();
+    if (!data.ok) {
+      window.location.href = '/';
+      return;
+    }
+    // Authenticated — start sim
+    document.getElementById('cesiumContainer').style.display = 'block';
+    document.getElementById('hud').style.display = 'block';
+    document.getElementById('controls-hint').style.display = 'block';
+    document.getElementById('location-picker').style.display = 'block';
+    document.getElementById('logout-btn').style.display = 'block';
+    Cesium.Ion.defaultAccessToken = CESIUM_TOKEN;
+    initializeSim();
+    startHeartbeat();
+  } catch (err) {
+    // If API not available (local dev), just start directly
+    console.warn('Auth API unavailable, starting in local mode');
+    document.getElementById('cesiumContainer').style.display = 'block';
+    document.getElementById('hud').style.display = 'block';
+    document.getElementById('controls-hint').style.display = 'block';
+    document.getElementById('location-picker').style.display = 'block';
+    Cesium.Ion.defaultAccessToken = CESIUM_TOKEN;
+    initializeSim();
+  }
+}
+
+function startHeartbeat() {
+  setInterval(async () => {
+    try {
+      const res = await fetch('/api/heartbeat', { method: 'POST' });
+      if (!res.ok) {
+        const data = await res.json();
+        if (data.error === 'Not authenticated' || data.error === 'Invalid token') {
+          window.location.href = '/';
+        }
+      }
+    } catch {}
+  }, 30000);
+}
+
+async function logout() {
+  await fetch('/api/logout').catch(() => {});
+  window.location.href = '/';
+}
+
+checkAuthAndStart();
+
+async function initializeSim() {
+  const loadBar = document.getElementById('load-bar');
+  const loadText = document.getElementById('load-text');
+  function setLoad(pct, text) { loadBar.style.width = pct + '%'; loadText.textContent = text; }
+
+  setLoad(15, 'Creating Cesium viewer...');
+
+  // ─── Cesium Viewer (create immediately — don't block on async providers) ───
+  const viewer = new Cesium.Viewer('cesiumContainer', {
+    skyAtmosphere: new Cesium.SkyAtmosphere(),
+    scene3DOnly: true,
+    shadows: true,
+    shouldAnimate: true,
+    requestRenderMode: false,
+    maximumRenderTimeChange: Infinity,
+    targetFrameRate: 60,
+    useBrowserRecommendedResolution: true,
+    sceneModePicker: false,
+    baseLayerPicker: false,
+    navigationHelpButton: false,
+    homeButton: false,
+    geocoder: false,
+    animation: false,
+    timeline: false,
+    fullscreenButton: false,
+    infoBox: false,
+    selectionIndicator: false,
+  });
+
+  const scene = viewer.scene;
+
+  // Scene enhancements (synchronous — apply immediately)
+  scene.globe.enableLighting = true;
+  scene.globe.depthTestAgainstTerrain = true;
+  scene.fog.enabled = true;
+  scene.fog.density = 0.0003;
+  scene.fog.screenSpaceErrorFactor = 4;
+  scene.highDynamicRange = true;
+  scene.postProcessStages.fxaa.enabled = true;
+  scene.skyAtmosphere.brightnessShift = 0.0;
+  scene.skyAtmosphere.hueShift = 0.0;
+  scene.skyAtmosphere.saturationShift = 0.0;
+  scene.globe.oceanNormalMapUrl = Cesium.buildModuleUrl('Assets/Textures/waterNormalsSmall.jpg');
+  scene.globe.showWaterEffect = true;
+
+  setLoad(30, 'Loading terrain...');
+
+  // ─── Load async providers in parallel (non-blocking) ───
+  const loadTerrain = Cesium.createWorldTerrainAsync({
+    requestWaterMask: true,
+    requestVertexNormals: true,
+  }).then(tp => {
+    viewer.terrainProvider = tp;
+    setLoad(50, 'Terrain loaded');
+    console.log('World terrain loaded');
+  }).catch(err => {
+    console.error('Terrain failed (using default ellipsoid):', err);
+    setLoad(50, 'Terrain failed — using basic globe');
+  });
+
+  const loadImagery = Cesium.IonImageryProvider.fromAssetId(2).then(provider => {
+    viewer.imageryLayers.removeAll();
+    viewer.imageryLayers.addImageryProvider(provider);
+    setLoad(60, 'Satellite imagery loaded');
+    console.log('Bing imagery loaded');
+  }).catch(err => {
+    console.error('Imagery failed (using default):', err);
+    setLoad(60, 'Imagery failed — using default');
+  });
+
+  const loadBuildings = Cesium.createOsmBuildingsAsync().then(tileset => {
+    viewer.scene.primitives.add(tileset);
+    setLoad(70, '3D buildings loaded');
+    console.log('OSM buildings loaded');
+  }).catch(err => {
+    console.error('Buildings failed (skipping):', err);
+  });
+
+  // Wait for all to settle (but don't block on failures)
+  await Promise.allSettled([loadTerrain, loadImagery, loadBuildings]);
+  setLoad(80, 'All assets loaded');
+
+  // ─── Disable default camera controls ───
+  scene.screenSpaceCameraController.enableRotate = false;
+  scene.screenSpaceCameraController.enableTranslate = false;
+  scene.screenSpaceCameraController.enableZoom = false;
+  scene.screenSpaceCameraController.enableTilt = false;
+  scene.screenSpaceCameraController.enableLook = false;
+
+  // ─── Flight State ───
+  const state = {
+    // Start at 1776 Norm pl Seaford, NY by default
+    longitude: Cesium.Math.toRadians(-73.4921156),
+    latitude: Cesium.Math.toRadians(40.6791576),
+    altitudeMSL: 500,    // meters above sea level
+    heading: Cesium.Math.toRadians(280), // runway heading
+    pitch: 0,
+    roll: 0,
+
+    speed: 0,            // m/s
+    throttle: 0,         // 0-1
+    vs: 0,               // vertical speed m/s
+    pitchRate: 0,
+    rollRate: 0,
+    yawRate: 0,
+    aoa: 0,
+
+    gForce: 1,
+    onGround: true,
+    gearDown: true,
+    flaps: 0,
+    brakes: false,
+    landingLights: false,
+    stalling: false,
+    crashed: false,
+    terrainHeight: 0,
+    agl: 0,
+
+    // Autopilot
+    autopilot: false,
+    targetLat: Cesium.Math.toRadians(40.6791576),
+    targetLon: Cesium.Math.toRadians(-73.4921156),
+    targetAlt: 500,
+  };
+
+  // ─── Controls ───
+  const keys = {};
+  let cameraMode = 0;
+
+  window.addEventListener('keydown', (e) => {
+    keys[e.key.toLowerCase()] = true;
+    const k = e.key.toLowerCase();
+    if (k === 'g' && !(state.onGround && state.speed > 5)) state.gearDown = !state.gearDown;
+    if (k === 'f') state.flaps = (state.flaps + 1) % 4;
+    if (k === 'b') state.brakes = !state.brakes;
+    if (k === 'c') cameraMode = (cameraMode + 1) % 4;
+    if (k === 'l') state.landingLights = !state.landingLights;
+    if (k === 'n') cycleTimeOfDay();
+    if (k === 'r' && state.crashed) resetFlight();
+    if (k === 't') document.getElementById('location-select').focus();
+    if (k === 'p') {
+      state.autopilot = !state.autopilot;
+      showMessage(state.autopilot ? 'AUTOPILOT: TOUR GUIDE ON' : 'AUTOPILOT: OFF');
+    }
+    if (k === 'k') {
+      // Request cache stats from service worker
+      if (navigator.serviceWorker?.controller) {
+        navigator.serviceWorker.controller.postMessage('cache-stats');
+        setTimeout(() => {
+          if (cacheStats) {
+            showMessage(`CACHE: ${cacheStats.totalMB}MB / ${cacheStats.maxMB}MB (${cacheStats.count} tiles)`);
+          } else {
+            showMessage('CACHE: waiting for service worker...');
+          }
+        }, 200);
+      } else {
+        showMessage('CACHE: service worker not active yet');
+      }
+    }
+  });
+  window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+
+  // ─── Location Teleport ───
+  document.getElementById('location-select').addEventListener('change', async (e) => {
+    const val = e.target.value;
+    if (!val) return;
+
+    if (val === 'custom') {
+      const query = prompt("Enter a city name or landmark (e.g. 'Paris', 'Eiffel Tower'):");
+      e.target.value = '';
+      e.target.blur();
+      if (!query) return;
+
+      showMessage('SEARCHING...');
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+        const data = await res.json();
+        if (data && data.length > 0) {
+          const loc = {
+            name: query.toUpperCase(),
+            lat: parseFloat(data[0].lat),
+            lon: parseFloat(data[0].lon),
+            alt: 150, // default assumed altitude
+            heading: 0
+          };
+          teleportTo(loc);
+        } else {
+          showMessage('LOCATION NOT FOUND');
+        }
+      } catch (err) {
+        showMessage('SEARCH FAILED');
+      }
+      return;
+    }
+
+    const loc = LOCATIONS[val];
+    if (!loc) return;
+    teleportTo(loc);
+    e.target.value = '';
+    e.target.blur();
+  });
+
+  function teleportTo(loc) {
+    // Spawn roughly 3.5km South of the target so the plane approaches smoothly
+    const spawnLat = loc.lat - (3500 / 111320);
+
+    state.latitude = Cesium.Math.toRadians(spawnLat);
+    state.longitude = Cesium.Math.toRadians(loc.lon);
+    state.altitudeMSL = loc.alt + 600; // Start 600m above ground
+    state.heading = 0; // Heading North directly towards target
+    state.pitch = 0;
+    state.roll = 0;
+    state.speed = 100; // Start flying
+    state.throttle = 0.5;
+    state.vs = 0;
+    state.pitchRate = 0;
+    state.rollRate = 0;
+    state.yawRate = 0;
+    state.onGround = false;
+    state.gearDown = false;
+    state.flaps = 0;
+    state.brakes = false;
+    state.crashed = false;
+    state.stalling = false;
+    state.autopilot = true;
+    state.targetLat = Cesium.Math.toRadians(loc.lat);
+    state.targetLon = Cesium.Math.toRadians(loc.lon);
+    state.targetAlt = loc.alt;
+    
+    showMessage(`TOUR GUIDE: ${loc.name.toUpperCase()}`);
+  }
+
+  function resetFlight() {
+    state.speed = 0;
+    state.throttle = 0;
+    state.vs = 0;
+    state.pitch = 0;
+    state.roll = 0;
+    state.pitchRate = 0;
+    state.rollRate = 0;
+    state.yawRate = 0;
+    state.onGround = true;
+    state.gearDown = true;
+    state.flaps = 0;
+    state.brakes = false;
+    state.crashed = false;
+    state.stalling = false;
+    state.altitudeMSL = state.terrainHeight + 10;
+  }
+
+  // ─── Time of Day ───
+  let timeOfDayIdx = 0;
+  const timesOfDay = [
+    { name: 'Morning', hour: 8 },
+    { name: 'Noon', hour: 12 },
+    { name: 'Golden Hour', hour: 17 },
+    { name: 'Sunset', hour: 19 },
+    { name: 'Dusk', hour: 20 },
+    { name: 'Night', hour: 23 },
+    { name: 'Dawn', hour: 5 },
+  ];
+
+  function cycleTimeOfDay() {
+    timeOfDayIdx = (timeOfDayIdx + 1) % timesOfDay.length;
+    const t = timesOfDay[timeOfDayIdx];
+    const now = Cesium.JulianDate.now();
+    const date = Cesium.JulianDate.toDate(now);
+    date.setHours(t.hour, 0, 0);
+    viewer.clock.currentTime = Cesium.JulianDate.fromDate(date);
+    viewer.clock.shouldAnimate = false;
+    showMessage(`${t.name} (${t.hour}:00)`);
+  }
+
+  // ─── Messages ───
+  let messageTimeout = null;
+  let currentMessage = '';
+  function showMessage(msg) {
+    currentMessage = msg;
+    clearTimeout(messageTimeout);
+    messageTimeout = setTimeout(() => { currentMessage = ''; }, 3000);
+  }
+
+  // ─── Physics Constants ───
+  const GRAVITY = 9.81;
+  const AIR_DENSITY_SEA = 1.225;
+  const WING_AREA = 120;
+  const MASS = 40000;
+  const MAX_THRUST = 1000000; // Significantly increased to boost max speed
+  const CL_BASE = 0.3;
+  const CL_PER_AOA = 5.5;
+  const CL_MAX = 1.8;
+  const CD_MIN = 0.025;
+  const CD_INDUCED_K = 0.04;
+  const STALL_ANGLE = 0.28;
+
+  const EARTH_RADIUS = 6378137; // meters
+
+  function getAirDensity(alt) {
+    return AIR_DENSITY_SEA * Math.exp(-alt / 10000);
+  }
+
+  setLoad(60, 'Loading satellite imagery...');
+
+  // ─── Aircraft Entity (3D model placeholder — colored box for now) ───
+  // We position this in the world and use it for the external camera views
+  const aircraftEntity = viewer.entities.add({
+    position: Cesium.Cartesian3.fromRadians(state.longitude, state.latitude, state.altitudeMSL),
+    orientation: new Cesium.ConstantProperty(Cesium.Transforms.headingPitchRollQuaternion(
+      Cesium.Cartesian3.fromRadians(state.longitude, state.latitude, state.altitudeMSL),
+      new Cesium.HeadingPitchRoll(state.heading, state.pitch, state.roll)
+    )),
+    box: {
+      dimensions: new Cesium.Cartesian3(40, 6, 30),
+      material: Cesium.Color.WHITE.withAlpha(0.0), // invisible — just for reference
+    }
+  });
+
+  setLoad(80, 'Initializing flight computer...');
+
+  // ─── Physics Update ───
+  function updatePhysics(dt) {
+    if (state.crashed || dt > 0.1) return;
+    dt = Math.min(dt, 0.05);
+
+    // Input
+    let pitchInput = 0, rollInput = 0, yawInput = 0;
+
+    if (state.autopilot) {
+      const targetSpeed = 80; // ~150 knots, slower for sightseeing
+      const targetAlt = state.targetAlt + 400; // Orbit just 400m above the target (tighter to the buildings)
+
+      // Auto-throttle
+      if (state.speed < targetSpeed) state.throttle = Math.min(1, state.throttle + dt * 0.2);
+      if (state.speed > targetSpeed) state.throttle = Math.max(0, state.throttle - dt * 0.2);
+      state.brakes = state.speed > targetSpeed * 1.2;
+
+      // Auto-pitch (maintain altitude smoothly)
+      const altError = targetAlt - state.altitudeMSL;
+      // Also add a little look-ahead based on vertical speed
+      const targetPitch = Cesium.Math.clamp(altError * 0.005 - state.vs * 0.01, -0.15, 0.15);
+      pitchInput = Cesium.Math.clamp((targetPitch - state.pitch) * 4, -1, 1);
+
+      // Nav - Bearing to target
+      const dLon = state.targetLon - state.longitude;
+      const y = Math.sin(dLon) * Math.cos(state.targetLat);
+      const x = Math.cos(state.latitude) * Math.sin(state.targetLat) - Math.sin(state.latitude) * Math.cos(state.targetLat) * Math.cos(dLon);
+      let bearing = Math.atan2(y, x);
+      if (bearing < 0) bearing += Math.PI * 2;
+
+      // Distance to target (equirectangular approx)
+      const dx = dLon * Math.cos((state.latitude + state.targetLat)/2);
+      const dy = state.targetLat - state.latitude;
+      const dist = Math.sqrt(dx*dx + dy*dy) * EARTH_RADIUS;
+
+      // Tour guide orbit (smooth entry)
+      let targetHeading = bearing;
+      const orbitRadius = 1200; // 1.2km radius for great downtown views
+      
+      // Smoothly blend from 0 offset (fly straight to target) at 4km to 90deg offset (tangent orbit) at orbit radius
+      if (dist < orbitRadius * 3) {
+         const blend = 1.0 - Math.min(1.0, Math.max(0.0, dist - orbitRadius) / (orbitRadius * 2));
+         const offset = (Math.PI / 2) * blend;
+         targetHeading = (bearing + offset) % (Math.PI * 2);
+      }
+
+      let currentHeading = state.heading % (Math.PI * 2);
+      if (currentHeading < 0) currentHeading += Math.PI * 2;
+      
+      let headingError = targetHeading - currentHeading;
+      if (headingError > Math.PI) headingError -= Math.PI * 2;
+      if (headingError < -Math.PI) headingError += Math.PI * 2;
+
+      // Auto-roll - soften the response to prevent crazy snapping
+      const targetRoll = Cesium.Math.clamp(headingError * 1.2, -0.45, 0.45); // Max ~25 degree bank
+      rollInput = Cesium.Math.clamp((targetRoll - state.roll) * 2.5, -1, 1);
+      
+      // Auto-gear
+      if (state.agl > 100) state.gearDown = false;
+      if (state.agl < 50) state.gearDown = true;
+    } else {
+      if (keys['arrowup']) pitchInput = -1;
+      if (keys['arrowdown']) pitchInput = 1;
+      if (keys['arrowleft']) rollInput = -1;
+      if (keys['arrowright']) rollInput = 1;
+      if (keys['a']) yawInput = -1;
+      if (keys['d']) yawInput = 1;
+      if (keys['w']) state.throttle = Math.min(1, state.throttle + dt * 0.5);
+      if (keys['s']) state.throttle = Math.max(0, state.throttle - dt * 0.5);
+    }
+
+    const controlAuth = Math.min(1, state.speed / 80);
+    const pitchRateMax = 1.2 * controlAuth;
+    const rollRateMax = 2.0 * controlAuth;
+    const yawRateMax = 0.6 * controlAuth;
+
+    state.pitchRate += (pitchInput * pitchRateMax - state.pitchRate * 3) * dt;
+    state.rollRate += (rollInput * rollRateMax - state.rollRate * 3) * dt;
+    state.yawRate += (yawInput * yawRateMax - state.yawRate * 2) * dt;
+
+    state.pitch += state.pitchRate * dt;
+    state.roll += state.rollRate * dt;
+    state.heading += state.yawRate * dt;
+
+    // Auto-level roll
+    if (!keys['arrowleft'] && !keys['arrowright']) {
+      state.roll *= (1 - 0.3 * dt);
+    }
+    state.pitch = Cesium.Math.clamp(state.pitch, -Math.PI / 3, Math.PI / 3);
+
+    // Forward direction in local frame
+    const cosPitch = Math.cos(state.pitch);
+    const sinPitch = Math.sin(state.pitch);
+    const cosHeading = Math.cos(state.heading);
+    const sinHeading = Math.sin(state.heading);
+
+    // Air density
+    const rho = getAirDensity(state.altitudeMSL);
+    const dynamicPressure = 0.5 * rho * state.speed * state.speed;
+
+    // AOA (simplified: pitch angle relative to velocity)
+    state.aoa = state.pitch;
+
+    // Lift
+    const flapBonus = state.flaps * 0.15;
+    let CL = CL_BASE + CL_PER_AOA * state.aoa + flapBonus;
+    state.stalling = Math.abs(state.aoa) > STALL_ANGLE;
+    if (state.stalling) CL *= 0.4;
+    CL = Cesium.Math.clamp(CL, -CL_MAX, CL_MAX + flapBonus);
+    const lift = dynamicPressure * WING_AREA * CL;
+
+    // Drag
+    const CD = CD_MIN + CD_INDUCED_K * CL * CL
+      + (state.gearDown ? 0.015 : 0)
+      + (state.flaps * 0.008)
+      + (state.brakes ? 0.05 : 0);
+    const drag = dynamicPressure * WING_AREA * CD;
+
+    // Thrust
+    const thrust = MAX_THRUST * state.throttle * (0.8 + 0.2 * (rho / AIR_DENSITY_SEA));
+
+    // Force balance along flight path
+    const netForward = thrust - drag - MASS * GRAVITY * sinPitch;
+    const netUp = lift * cosPitch - MASS * GRAVITY * cosPitch;
+
+    // Acceleration
+    const accelForward = netForward / MASS;
+    const accelUp = netUp / MASS;
+
+    // Speed integration
+    state.speed += accelForward * dt;
+    state.speed = Math.max(0, state.speed);
+
+    // Vertical speed
+    state.vs = state.speed * sinPitch + (accelUp / (state.speed > 1 ? state.speed : 1)) * dt * state.speed;
+    // Simplified: use pitch angle for vertical component
+    const verticalSpeed = state.speed * Math.sin(state.pitch);
+    const horizontalSpeed = state.speed * Math.cos(state.pitch);
+
+    // Bank-induced turn
+    if (!state.onGround && state.speed > 30) {
+      const turnRate = (GRAVITY * Math.tan(state.roll)) / Math.max(state.speed, 30);
+      state.heading += turnRate * dt;
+    }
+
+    // Ground steering
+    if (state.onGround && state.speed < 50) {
+      if (keys['a']) state.heading -= 0.8 * dt;
+      if (keys['d']) state.heading += 0.8 * dt;
+    }
+
+    // Position update (great circle approximation for short dt)
+    state.altitudeMSL += verticalSpeed * dt;
+    state.latitude += (horizontalSpeed * Math.cos(state.heading) * dt) / EARTH_RADIUS;
+    state.longitude += (horizontalSpeed * Math.sin(state.heading) * dt) / (EARTH_RADIUS * Math.cos(state.latitude));
+
+    // Terrain sampling
+    const cartographic = new Cesium.Cartographic(state.longitude, state.latitude);
+    const terrainHeight = scene.globe.getHeight(cartographic);
+    if (terrainHeight !== undefined) {
+      state.terrainHeight = terrainHeight;
+    }
+    state.agl = state.altitudeMSL - state.terrainHeight;
+
+    // Ground collision
+    const gearHeight = state.gearDown ? 8 : 2;
+    state.onGround = state.agl <= gearHeight + 0.5;
+
+    if (state.onGround) {
+      state.altitudeMSL = state.terrainHeight + gearHeight;
+      state.agl = gearHeight;
+
+      if (state.vs < -0.5) state.vs = 0;
+
+      // Ground friction
+      if (state.brakes) {
+        state.speed *= (1 - 1.5 * dt);
+        if (state.speed < 0.5) state.speed = 0;
+      } else {
+        state.speed *= (1 - 0.05 * dt);
+      }
+
+      // Prevent nose-down on ground
+      if (state.pitch > 0.05) state.pitch *= 0.95;
+      if (state.pitch < -0.02) state.pitch = -0.02;
+
+      // Crash detection
+      if (!state.gearDown && state.speed > 10) {
+        state.crashed = true;
+        showMessage('CRASHED — Gear was up!');
+      }
+      if (verticalSpeed < -12 && state.speed > 30) {
+        state.crashed = true;
+        showMessage('CRASHED — Too hard!');
+      }
+    }
+
+    // G-force
+    state.gForce = 1 + accelUp / GRAVITY;
+
+    // Vertical speed for display
+    state.vs = verticalSpeed;
+  }
+
+  // ─── Camera Update ───
+  function updateCamera() {
+    const pos = Cesium.Cartesian3.fromRadians(state.longitude, state.latitude, state.altitudeMSL);
+    const hpr = new Cesium.HeadingPitchRoll(state.heading, state.pitch, state.roll);
+
+    if (cameraMode === 0) {
+      // Chase camera — behind and above
+      const offset = new Cesium.HeadingPitchRange(state.heading + Math.PI, -0.15, 120);
+      const transform = Cesium.Transforms.eastNorthUpToFixedFrame(pos);
+      const behindLocal = new Cesium.Cartesian3(
+        -Math.sin(state.heading) * 100,
+        -Math.cos(state.heading) * 100,
+        35
+      );
+      const cameraPos = new Cesium.Cartesian3();
+      Cesium.Matrix4.multiplyByPoint(transform, behindLocal, cameraPos);
+
+      scene.camera.setView({
+        destination: cameraPos,
+        orientation: {
+          heading: state.heading,
+          pitch: -0.12,
+          roll: 0,
+        }
+      });
+    } else if (cameraMode === 1) {
+      // Cockpit camera
+      const transform = Cesium.Transforms.eastNorthUpToFixedFrame(pos);
+      const cockpitLocal = new Cesium.Cartesian3(
+        Math.sin(state.heading) * 8,
+        Math.cos(state.heading) * 8,
+        3
+      );
+      const cockpitPos = new Cesium.Cartesian3();
+      Cesium.Matrix4.multiplyByPoint(transform, cockpitLocal, cockpitPos);
+
+      scene.camera.setView({
+        destination: cockpitPos,
+        orientation: {
+          heading: state.heading,
+          pitch: state.pitch - 0.05,
+          roll: state.roll,
+        }
+      });
+    } else if (cameraMode === 2) {
+      // Orbit / cinematic (slightly offset to the side)
+      const transform = Cesium.Transforms.eastNorthUpToFixedFrame(pos);
+      const sideLocal = new Cesium.Cartesian3(
+        -Math.sin(state.heading + 0.5) * 150,
+        -Math.cos(state.heading + 0.5) * 150,
+        25
+      );
+      const cameraPos = new Cesium.Cartesian3();
+      Cesium.Matrix4.multiplyByPoint(transform, sideLocal, cameraPos);
+
+      scene.camera.setView({
+        destination: cameraPos,
+        orientation: {
+          heading: state.heading + 0.3,
+          pitch: -0.1,
+          roll: 0,
+        }
+      });
+    } else if (cameraMode === 3) {
+      // Low flyby
+      const transform = Cesium.Transforms.eastNorthUpToFixedFrame(pos);
+      const flybyLocal = new Cesium.Cartesian3(
+        Math.sin(state.heading) * 50 + Math.cos(state.heading) * 80,
+        Math.cos(state.heading) * 50 - Math.sin(state.heading) * 80,
+        -5
+      );
+      const cameraPos = new Cesium.Cartesian3();
+      Cesium.Matrix4.multiplyByPoint(transform, flybyLocal, cameraPos);
+
+      // Look at aircraft
+      scene.camera.setView({
+        destination: cameraPos,
+        orientation: {
+          heading: state.heading + Math.PI + 0.5,
+          pitch: 0.05,
+          roll: 0,
+        }
+      });
+    }
+
+    // Update aircraft entity position for reference
+    aircraftEntity.position = pos;
+  }
+
+  // ─── HUD ───
+  const hudCanvas = document.getElementById('hud');
+  const ctx = hudCanvas.getContext('2d');
+
+  function drawHUD() {
+    hudCanvas.width = window.innerWidth;
+    hudCanvas.height = window.innerHeight;
+    ctx.clearRect(0, 0, hudCanvas.width, hudCanvas.height);
+
+    const w = hudCanvas.width;
+    const h = hudCanvas.height;
+    const cx = w / 2;
+    const cy = h / 2;
+
+    const kts = (state.speed * 1.944).toFixed(0);
+    const altFt = (state.altitudeMSL * 3.281).toFixed(0);
+    const aglFt = (state.agl * 3.281).toFixed(0);
+    const hdg = ((Cesium.Math.toDegrees(state.heading) % 360) + 360) % 360;
+    const hdgStr = hdg.toFixed(0).padStart(3, '0');
+    const vsFpm = (state.vs * 196.85).toFixed(0);
+    const thr = (state.throttle * 100).toFixed(0);
+    const mach = (state.speed / 343).toFixed(2);
+    const gf = state.gForce.toFixed(1);
+    const pitchDeg = Cesium.Math.toDegrees(state.pitch);
+    const rollDeg = Cesium.Math.toDegrees(state.roll);
+
+    if (cameraMode === 1) {
+      // ─── Full Cockpit HUD ───
+      ctx.strokeStyle = '#00ff88';
+      ctx.fillStyle = '#00ff88';
+      ctx.lineWidth = 1.5;
+      ctx.font = '14px "Courier New"';
+
+      // Flight path marker
+      ctx.beginPath();
+      ctx.arc(cx, cy, 12, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx - 25, cy); ctx.lineTo(cx - 12, cy);
+      ctx.moveTo(cx + 12, cy); ctx.lineTo(cx + 25, cy);
+      ctx.moveTo(cx, cy - 12); ctx.lineTo(cx, cy - 18);
+      ctx.stroke();
+
+      // Pitch ladder
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(-state.roll);
+
+      for (let deg = -30; deg <= 30; deg += 5) {
+        if (deg === 0) continue;
+        const y = (deg + pitchDeg) * 8;
+        if (Math.abs(y) > 200) continue;
+        const len = deg % 10 === 0 ? 80 : 40;
+
+        ctx.beginPath();
+        if (deg < 0) {
+          for (let dx = -len; dx < len; dx += 15) {
+            ctx.moveTo(dx, y);
+            ctx.lineTo(Math.min(dx + 8, len), y);
+          }
+        } else {
+          ctx.moveTo(-len, y); ctx.lineTo(len, y);
+        }
+        ctx.stroke();
+
+        if (deg % 10 === 0) {
+          ctx.textAlign = 'right'; ctx.fillText(`${-deg}`, -len - 5, y + 4);
+          ctx.textAlign = 'left'; ctx.fillText(`${-deg}`, len + 5, y + 4);
+        }
+      }
+
+      // Horizon line
+      const horizY = pitchDeg * 8;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-250, horizY); ctx.lineTo(-30, horizY);
+      ctx.moveTo(30, horizY); ctx.lineTo(250, horizY);
+      ctx.stroke();
+      ctx.lineWidth = 1.5;
+
+      ctx.restore();
+
+      // Heading tape
+      const headingY = 60;
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.fillRect(cx - 150, headingY - 15, 300, 30);
+      ctx.fillStyle = '#00ff88';
+      ctx.strokeStyle = '#00ff88';
+      ctx.textAlign = 'center';
+
+      for (let d = -30; d <= 30; d += 5) {
+        let deg = ((hdg + d) % 360 + 360) % 360;
+        const x = cx + d * 5;
+        if (x < cx - 148 || x > cx + 148) continue;
+        if (Math.round(deg) % 10 === 0) {
+          ctx.beginPath(); ctx.moveTo(x, headingY + 8); ctx.lineTo(x, headingY + 15); ctx.stroke();
+          let label = Math.round(deg).toString();
+          const cards = { 0: 'N', 90: 'E', 180: 'S', 270: 'W' };
+          if (cards[Math.round(deg)]) label = cards[Math.round(deg)];
+          ctx.fillText(label, x, headingY + 28);
+        } else {
+          ctx.beginPath(); ctx.moveTo(x, headingY + 11); ctx.lineTo(x, headingY + 15); ctx.stroke();
+        }
+      }
+      ctx.beginPath();
+      ctx.moveTo(cx, headingY - 15); ctx.lineTo(cx - 6, headingY - 6); ctx.lineTo(cx + 6, headingY - 6);
+      ctx.fill();
+
+      // Speed tape
+      const spdX = cx - 200;
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.fillRect(spdX - 40, cy - 100, 80, 200);
+      ctx.fillStyle = '#00ff88';
+      ctx.textAlign = 'right';
+      const ktsNum = parseFloat(kts);
+      for (let s = -80; s <= 80; s += 10) {
+        const spdVal = Math.round(ktsNum / 10) * 10 + s;
+        if (spdVal < 0) continue;
+        const y = cy - (spdVal - ktsNum) * 2;
+        if (y < cy - 98 || y > cy + 98) continue;
+        if (spdVal % 20 === 0) {
+          ctx.fillText(spdVal.toString(), spdX + 30, y + 4);
+          ctx.beginPath(); ctx.moveTo(spdX + 35, y); ctx.lineTo(spdX + 40, y); ctx.stroke();
+        }
+      }
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(spdX - 5, cy - 12, 48, 24);
+      ctx.fillStyle = '#00ff88';
+      ctx.font = 'bold 16px "Courier New"';
+      ctx.fillText(kts, spdX + 38, cy + 5);
+      ctx.font = '14px "Courier New"';
+
+      // Alt tape
+      const altX = cx + 200;
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.fillRect(altX - 40, cy - 100, 80, 200);
+      ctx.fillStyle = '#00ff88';
+      ctx.textAlign = 'left';
+      const altNum = parseFloat(altFt);
+      for (let a = -500; a <= 500; a += 100) {
+        const altVal = Math.round(altNum / 100) * 100 + a;
+        if (altVal < 0) continue;
+        const y = cy - (altVal - altNum) * 0.4;
+        if (y < cy - 98 || y > cy + 98) continue;
+        if (altVal % 200 === 0) {
+          ctx.fillText(altVal.toString(), altX - 30, y + 4);
+          ctx.beginPath(); ctx.moveTo(altX - 40, y); ctx.lineTo(altX - 35, y); ctx.stroke();
+        }
+      }
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(altX - 38, cy - 12, 60, 24);
+      ctx.fillStyle = '#00ff88';
+      ctx.font = 'bold 16px "Courier New"';
+      ctx.fillText(Math.round(altNum).toString(), altX - 33, cy + 5);
+      ctx.font = '14px "Courier New"';
+
+      // VS
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#00ff88';
+      ctx.fillText(`${parseFloat(vsFpm) > 0 ? '+' : ''}${vsFpm}`, altX + 50, cy + 5);
+
+      // Bottom bar
+      const botY = h - 40;
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.fillRect(0, botY - 5, w, 35);
+      ctx.fillStyle = '#00ff88';
+      ctx.textAlign = 'left';
+      ctx.fillText(`MACH ${mach}`, 20, botY + 15);
+      ctx.fillText(`G ${gf}`, 150, botY + 15);
+      ctx.fillText(`THR ${thr}%`, 230, botY + 15);
+      ctx.fillText(`AGL ${aglFt}`, 350, botY + 15);
+      ctx.fillText(`GS ${kts}`, 470, botY + 15);
+
+      let statStr = '';
+      if (state.gearDown) statStr += ' GEAR';
+      if (state.flaps > 0) statStr += ` FLAP${state.flaps}`;
+      if (state.brakes) statStr += ' BRK';
+      if (state.landingLights) statStr += ' LAND';
+      ctx.fillText(statStr, 570, botY + 15);
+
+      // Coordinates
+      ctx.textAlign = 'right';
+      ctx.fillStyle = 'rgba(0,255,136,0.5)';
+      ctx.font = '11px "Courier New"';
+      ctx.fillText(
+        `${Cesium.Math.toDegrees(state.latitude).toFixed(4)}° ${Cesium.Math.toDegrees(state.longitude).toFixed(4)}°`,
+        w - 15, botY + 15
+      );
+      ctx.font = '14px "Courier New"';
+
+    } else {
+      // ─── External HUD (simplified) ───
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(0, 0, w, 50);
+
+      ctx.font = '14px "Courier New"';
+      ctx.fillStyle = '#00ff88';
+      ctx.textAlign = 'left';
+
+      ctx.fillText(`SPD: ${kts} KTS  M${mach}`, 20, 30);
+      ctx.fillText(`ALT: ${altFt} FT`, 260, 30);
+      ctx.fillText(`HDG: ${hdgStr}°`, 440, 30);
+      ctx.fillText(`VS: ${vsFpm} FPM`, 570, 30);
+      ctx.fillText(`THR: ${thr}%`, 740, 30);
+      ctx.fillText(`G: ${gf}`, 860, 30);
+      ctx.fillText(`AGL: ${aglFt}`, 940, 30);
+
+      let sx = 1100;
+      if (state.gearDown) { ctx.fillStyle = '#00ff00'; ctx.fillText('GEAR', sx, 30); sx += 60; }
+      if (state.flaps > 0) { ctx.fillStyle = '#00ccff'; ctx.fillText(`FLAP${state.flaps}`, sx, 30); sx += 70; }
+      if (state.brakes) { ctx.fillStyle = '#ff4444'; ctx.fillText('BRK', sx, 30); sx += 50; }
+
+      // Throttle bar
+      const barX = 15, barY = 65, barH = 150, barW = 8;
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.fillRect(barX, barY, barW, barH);
+      const thrH = state.throttle * barH;
+      ctx.fillStyle = state.throttle > 0.9 ? '#ff8800' : '#00ff88';
+      ctx.fillRect(barX, barY + barH - thrH, barW, thrH);
+      ctx.strokeStyle = '#00ff88';
+      ctx.strokeRect(barX, barY, barW, barH);
+      ctx.fillStyle = '#00ff88';
+      ctx.font = '11px "Courier New"';
+      ctx.fillText('THR', barX - 2, barY + barH + 16);
+      ctx.font = '14px "Courier New"';
+
+      // Coordinates
+      ctx.textAlign = 'right';
+      ctx.fillStyle = 'rgba(0,255,136,0.4)';
+      ctx.font = '11px "Courier New"';
+      ctx.fillText(
+        `${Cesium.Math.toDegrees(state.latitude).toFixed(4)}° ${Cesium.Math.toDegrees(state.longitude).toFixed(4)}°`,
+        w - 15, 30
+      );
+    }
+
+    // Cache status (bottom right, subtle)
+    if (cacheStats) {
+      ctx.font = '10px "Courier New"';
+      ctx.textAlign = 'right';
+      ctx.fillStyle = 'rgba(0,255,136,0.3)';
+      ctx.fillText(`CACHE ${cacheStats.totalMB}/${cacheStats.maxMB}MB`, w - 15, h - 8);
+      ctx.font = '14px "Courier New"';
+    }
+
+    // Camera mode label
+    const modes = ['CHASE', 'COCKPIT', 'CINEMATIC', 'FLYBY'];
+    ctx.font = '12px "Courier New"';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(0,255,136,0.4)';
+    ctx.fillText(modes[cameraMode], 15, h - 15);
+
+    // Stall warning
+    if (state.stalling && !state.onGround) {
+      ctx.fillStyle = '#ff0000';
+      ctx.font = 'bold 24px "Courier New"';
+      ctx.textAlign = 'center';
+      const blink = Math.sin(Date.now() * 0.01) > 0;
+      if (blink) ctx.fillText('STALL', cx, cy + 140);
+    }
+
+    // Crash
+    if (state.crashed) {
+      ctx.fillStyle = 'rgba(255,0,0,0.15)';
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = '#ff0000';
+      ctx.font = 'bold 36px "Courier New"';
+      ctx.textAlign = 'center';
+      ctx.fillText('CRASH', cx, cy - 10);
+      ctx.font = '18px "Courier New"';
+      ctx.fillStyle = '#ff8888';
+      ctx.fillText('Press R to restart', cx, cy + 25);
+    }
+
+    // Message display
+    if (currentMessage) {
+      ctx.font = 'bold 20px "Courier New"';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#00ff88';
+      ctx.fillText(currentMessage, cx, 120);
+    }
+  }
+
+  // ─── Loading Complete ───
+  setLoad(100, 'Ready for takeoff!');
+
+  setTimeout(() => {
+    const loading = document.getElementById('loading');
+    loading.style.opacity = '0';
+    setTimeout(() => loading.style.display = 'none', 1500);
+    setTimeout(() => {
+      document.getElementById('controls-hint').style.opacity = '0';
+    }, 12000);
+  }, 1500);
+
+  // ─── Main Loop ───
+  let lastTime = performance.now();
+
+  viewer.scene.preRender.addEventListener(() => {
+    const now = performance.now();
+    const dt = (now - lastTime) / 1000;
+    lastTime = now;
+
+    updatePhysics(dt);
+    updateCamera();
+    drawHUD();
+  });
+}
+</script>
+</body>
+</html>

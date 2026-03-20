@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flight Sim — Login</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #0a0a0a; color: #ccc;
+  font-family: 'Courier New', monospace;
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh; overflow: hidden;
+}
+
+.bg {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: radial-gradient(ellipse at 50% 120%, #0a1628 0%, #000 70%);
+  z-index: -1;
+}
+.stars {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
+}
+.stars span {
+  position: absolute; border-radius: 50%; background: #fff;
+  animation: twinkle 3s infinite alternate;
+}
+@keyframes twinkle { 0% { opacity: 0.2; } 100% { opacity: 1; } }
+
+.login-box {
+  background: rgba(10,10,10,0.9); border: 1px solid #1a2a1a;
+  border-radius: 8px; padding: 50px 45px 40px; width: 400px;
+  text-align: center; box-shadow: 0 0 60px rgba(0,255,136,0.05);
+}
+
+h1 { color: #00ff88; font-size: 2em; letter-spacing: 8px; margin-bottom: 5px; }
+h2 { color: #334; font-size: 0.85em; letter-spacing: 4px; font-weight: normal; margin-bottom: 35px; }
+
+.field { margin-bottom: 18px; text-align: left; }
+.field label { display: block; color: #556; font-size: 0.75em; letter-spacing: 2px; margin-bottom: 6px; }
+.field input {
+  width: 100%; padding: 12px 14px; background: #111; border: 1px solid #222;
+  color: #00ff88; font-family: 'Courier New', monospace; font-size: 1em;
+  border-radius: 4px; outline: none; transition: border-color 0.3s;
+}
+.field input:focus { border-color: #00ff88; }
+.field input::placeholder { color: #333; }
+
+button {
+  width: 100%; padding: 13px; background: #00ff88; color: #000; border: none;
+  font-family: 'Courier New', monospace; font-size: 1.1em; font-weight: bold;
+  border-radius: 4px; cursor: pointer; letter-spacing: 3px; margin-top: 10px;
+  transition: background 0.2s, transform 0.1s;
+}
+button:hover { background: #00ffaa; transform: translateY(-1px); }
+button:active { transform: translateY(0); }
+button:disabled { background: #333; color: #666; cursor: not-allowed; transform: none; }
+
+.error {
+  color: #ff4444; font-size: 0.85em; margin-top: 15px;
+  min-height: 1.2em; transition: opacity 0.3s;
+}
+
+.info {
+  color: #334; font-size: 0.7em; margin-top: 25px; line-height: 1.6;
+}
+.info a { color: #00664a; }
+
+.pilots {
+  color: #1a3a2a; font-size: 0.75em; margin-top: 15px;
+}
+</style>
+</head>
+<body>
+
+<div class="bg"></div>
+<div class="stars" id="stars"></div>
+
+<div class="login-box">
+  <h1>FLIGHT SIM</h1>
+  <h2>CLEARANCE REQUIRED</h2>
+
+  <form id="login-form">
+    <div class="field">
+      <label>CALLSIGN</label>
+      <input type="text" id="username" placeholder="Username" autocomplete="username" required autofocus>
+    </div>
+    <div class="field">
+      <label>AUTHORIZATION</label>
+      <input type="password" id="password" placeholder="Password" autocomplete="current-password" required>
+    </div>
+    <button type="submit" id="btn">REQUEST CLEARANCE</button>
+  </form>
+
+  <div class="error" id="error"></div>
+  <div class="pilots" id="pilots"></div>
+  <div class="info">Max 5 simultaneous pilots</div>
+</div>
+
+<script>
+// Generate stars
+const starsEl = document.getElementById('stars');
+for (let i = 0; i < 80; i++) {
+  const s = document.createElement('span');
+  s.style.left = Math.random() * 100 + '%';
+  s.style.top = Math.random() * 100 + '%';
+  const size = 1 + Math.random() * 2;
+  s.style.width = size + 'px';
+  s.style.height = size + 'px';
+  s.style.animationDelay = Math.random() * 3 + 's';
+  s.style.animationDuration = 2 + Math.random() * 3 + 's';
+  starsEl.appendChild(s);
+}
+
+// Check if already authenticated
+fetch('/api/check').then(r => r.json()).then(data => {
+  if (data.ok) {
+    window.location.href = '/sim.html';
+  }
+}).catch(() => {});
+
+// Login
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('btn');
+  const errEl = document.getElementById('error');
+  btn.disabled = true;
+  btn.textContent = 'REQUESTING...';
+  errEl.textContent = '';
+
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: document.getElementById('username').value,
+        password: document.getElementById('password').value,
+      }),
+    });
+    const data = await res.json();
+
+    if (res.ok && data.ok) {
+      btn.textContent = 'CLEARED — LAUNCHING...';
+      btn.style.background = '#00ff88';
+      setTimeout(() => { window.location.href = '/sim.html'; }, 500);
+    } else {
+      errEl.textContent = data.error || 'Access denied';
+      btn.disabled = false;
+      btn.textContent = 'REQUEST CLEARANCE';
+    }
+  } catch (err) {
+    errEl.textContent = 'Connection failed';
+    btn.disabled = false;
+    btn.textContent = 'REQUEST CLEARANCE';
+  }
+});
+</script>
+</body>
+</html>
