@@ -29,8 +29,14 @@ body {
 
 .login-box {
   background: rgba(10,10,10,0.9); border: 1px solid #1a2a1a;
-  border-radius: 8px; padding: 50px 45px 40px; width: 400px;
+  border-radius: 8px; padding: 50px 45px 40px; width: 400px; max-width: 92vw;
   text-align: center; box-shadow: 0 0 60px rgba(0,255,136,0.05);
+}
+
+@media (max-width: 480px) {
+  .login-box { padding: 35px 25px 30px; }
+  h1 { font-size: 1.5em; letter-spacing: 5px; }
+  .field input { font-size: 16px; /* prevents iOS zoom */ }
 }
 
 h1 { color: #00ff88; font-size: 2em; letter-spacing: 8px; margin-bottom: 5px; }
