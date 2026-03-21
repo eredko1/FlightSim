@@ -123,66 +123,65 @@ body { overflow: hidden; background: #000; font-family: 'Courier New', monospace
 #touch-controls > * { pointer-events: auto; }
 
 .touch-stick {
-  position: absolute; width: 130px; height: 130px;
+  position: absolute; width: 110px; height: 110px;
   border-radius: 50%; border: 2px solid rgba(0,255,136,0.3);
   background: rgba(0,0,0,0.2);
 }
 .touch-stick-knob {
-  position: absolute; width: 50px; height: 50px;
+  position: absolute; width: 44px; height: 44px;
   border-radius: 50%; background: rgba(0,255,136,0.4);
   top: 50%; left: 50%; transform: translate(-50%,-50%);
   transition: none;
 }
-#stick-left { bottom: 30px; left: 20px; }
-#stick-right { bottom: 30px; right: 20px; }
+#stick-left { bottom: 16px; left: 10px; }
+#stick-right { bottom: 16px; right: 10px; }
 
 .touch-btn {
-  position: absolute; width: 48px; height: 48px;
-  border-radius: 50%; background: rgba(0,0,0,0.5);
+  position: absolute; width: 42px; height: 42px;
+  border-radius: 50%; background: rgba(0,0,0,0.6);
   border: 1.5px solid rgba(0,255,136,0.3);
   color: #00ff88; font-family: 'Courier New', monospace;
-  font-size: 0.65em; font-weight: bold;
+  font-size: 0.6em; font-weight: bold;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; user-select: none; -webkit-user-select: none;
   transition: background 0.15s, border-color 0.15s;
 }
 .touch-btn.active { background: rgba(0,255,136,0.25); border-color: #00ff88; }
 .touch-btn-wide {
-  width: auto; min-width: 58px; padding: 0 12px;
-  border-radius: 24px; height: 42px;
+  width: auto; min-width: 50px; padding: 0 10px;
+  border-radius: 21px; height: 36px;
 }
 
 #touch-throttle-area {
-  position: absolute; left: 12px; bottom: 180px;
-  width: 40px; height: 180px; border-radius: 20px;
+  position: absolute; left: 12px; bottom: 140px;
+  width: 28px; height: 120px; border-radius: 14px;
   background: rgba(0,0,0,0.4); border: 1px solid rgba(0,255,136,0.2);
 }
 #touch-throttle-fill {
   position: absolute; bottom: 0; left: 0; width: 100%;
-  background: rgba(0,255,136,0.35); border-radius: 20px;
+  background: rgba(0,255,136,0.35); border-radius: 14px;
   transition: height 0.05s;
 }
 #touch-throttle-label {
-  position: absolute; bottom: -18px; left: 50%;
+  position: absolute; bottom: -16px; left: 50%;
   transform: translateX(-50%); color: rgba(0,255,136,0.5);
-  font-size: 0.55em; font-family: 'Courier New', monospace;
+  font-size: 0.5em; font-family: 'Courier New', monospace;
 }
 
 #touch-help-btn {
-  position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
-  z-index: 16; padding: 6px 16px; background: rgba(0,0,0,0.5);
+  position: fixed; bottom: 6px; left: 50%; transform: translateX(-50%);
+  z-index: 16; padding: 4px 12px; background: rgba(0,0,0,0.5);
   color: rgba(0,255,136,0.6); border: 1px solid rgba(0,255,136,0.2);
-  font-family: 'Courier New', monospace; font-size: 0.7em;
+  font-family: 'Courier New', monospace; font-size: 0.6em;
   border-radius: 4px; cursor: pointer; display: none;
 }
 
 @media (max-width: 768px), (pointer: coarse) {
   #touch-controls { display: block; }
   #touch-help-btn { display: block; }
-  #location-picker { top: auto; bottom: 12px; right: 12px; }
-  #location-picker select { font-size: 0.75em; padding: 6px 8px; }
-  #logout-btn { font-size: 0.65em; padding: 5px 10px; top: 10px; left: 10px; }
-  #controls-hint { font-size: 0.65em; bottom: 60px; max-width: 90vw; }
+  #location-picker { display: none !important; }
+  #logout-btn { font-size: 0.6em; padding: 4px 8px; top: 8px; left: 8px; }
+  #controls-hint { font-size: 0.6em; bottom: 50px; max-width: 85vw; }
   .cesium-widget-credits { display: none !important; }
 }
 </style>
@@ -272,18 +271,20 @@ body { overflow: hidden; background: #000; font-family: 'Courier New', monospace
     <div id="touch-throttle-label">THR</div>
   </div>
 
-  <!-- Flight buttons (right side) -->
-  <div class="touch-btn" id="touch-gear" style="right:170px; bottom:110px;">GEAR</div>
-  <div class="touch-btn" id="touch-ab" style="right:170px; bottom:168px;">A/B</div>
-  <div class="touch-btn" id="touch-sbrk" style="right:170px; bottom:55px;">BRK</div>
-  <div class="touch-btn" id="touch-cam" style="right:15px; bottom:175px;">CAM</div>
-  <div class="touch-btn" id="touch-ap" style="right:75px; bottom:175px;">A/P</div>
+  <!-- Top row: flight utility buttons (centered above sticks) -->
+  <div class="touch-btn" id="touch-gear" style="left:50%; margin-left:-100px; bottom:140px;">GR</div>
+  <div class="touch-btn" id="touch-ab" style="left:50%; margin-left:-50px; bottom:140px;">AB</div>
+  <div class="touch-btn" id="touch-sbrk" style="left:50%; margin-left:0px; bottom:140px;">BK</div>
+  <div class="touch-btn" id="touch-cam" style="left:50%; margin-left:50px; bottom:140px;">CAM</div>
+  <div class="touch-btn" id="touch-ap" style="left:50%; margin-left:100px; bottom:140px;">AP</div>
 
-  <!-- Combat buttons -->
-  <div class="touch-btn" id="touch-fire" style="right:75px; bottom:55px; width:60px; height:60px; background:rgba(255,0,0,0.3); border-color:rgba(255,68,68,0.5); color:#ff4444; font-size:0.8em;">FIRE</div>
-  <div class="touch-btn touch-btn-wide" id="touch-wpn" style="right:15px; bottom:12px;">WPN</div>
-  <div class="touch-btn" id="touch-flr" style="left:170px; bottom:110px; color:#ffaa00; border-color:rgba(255,170,0,0.3);">FLR</div>
-  <div class="touch-btn" id="touch-chf" style="left:170px; bottom:55px; color:#00aaff; border-color:rgba(0,170,255,0.3);">CHF</div>
+  <!-- Left side combat: countermeasures (above left stick) -->
+  <div class="touch-btn" id="touch-flr" style="left:130px; bottom:90px; color:#ffaa00; border-color:rgba(255,170,0,0.4);">FLR</div>
+  <div class="touch-btn" id="touch-chf" style="left:130px; bottom:40px; color:#00aaff; border-color:rgba(0,170,255,0.4);">CHF</div>
+
+  <!-- Right side combat: fire + weapon (above right stick) -->
+  <div class="touch-btn" id="touch-fire" style="right:130px; bottom:65px; width:56px; height:56px; background:rgba(255,0,0,0.35); border-color:rgba(255,68,68,0.5); color:#ff4444; font-size:0.75em;">FIRE</div>
+  <div class="touch-btn" id="touch-wpn" style="right:130px; bottom:16px; color:#aaa; border-color:rgba(150,150,150,0.4);">WPN</div>
 </div>
 
 <button id="touch-help-btn" onclick="toggleHelp()">? HELP</button>
