@@ -68,6 +68,53 @@ body { overflow: hidden; background: #000; font-family: 'Courier New', monospace
 }
 #location-picker select:hover { border-color: #00ff88; }
 
+/* ─── Game Lobby Overlay ─── */
+#game-lobby {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.92); z-index: 50;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-family: 'Courier New', monospace; color: #ccc;
+}
+#game-lobby.hidden { display: none; }
+#game-lobby h1 { color: #00ff88; font-size: 2em; letter-spacing: 6px; margin-bottom: 5px; }
+#game-lobby h2 { color: #445; font-size: 0.9em; letter-spacing: 3px; font-weight: normal; margin-bottom: 30px; }
+
+.lobby-section { margin-bottom: 25px; text-align: center; }
+.lobby-section label { display: block; color: #667; font-size: 0.75em; letter-spacing: 2px; margin-bottom: 8px; }
+
+.aircraft-select { display: flex; gap: 15px; justify-content: center; }
+.aircraft-card {
+  width: 180px; padding: 18px 15px; background: rgba(20,20,30,0.8);
+  border: 2px solid #333; border-radius: 8px; cursor: pointer;
+  text-align: center; transition: border-color 0.2s, transform 0.1s;
+}
+.aircraft-card:hover { border-color: #00ff88; transform: translateY(-2px); }
+.aircraft-card.selected { border-color: #00ff88; background: rgba(0,60,40,0.3); }
+.aircraft-card h3 { color: #00ff88; font-size: 1em; margin-bottom: 8px; }
+.aircraft-card .stats { color: #778; font-size: 0.7em; line-height: 1.6; text-align: left; }
+.aircraft-card .faction { font-size: 0.65em; letter-spacing: 2px; margin-bottom: 6px; }
+.aircraft-card .faction.nato { color: #4488ff; }
+.aircraft-card .faction.opfor { color: #ff4444; }
+
+.mode-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.mode-btn {
+  padding: 10px 20px; background: rgba(20,20,30,0.8);
+  border: 1px solid #333; border-radius: 6px; color: #aaa;
+  font-family: 'Courier New', monospace; font-size: 0.85em;
+  cursor: pointer; transition: all 0.2s;
+}
+.mode-btn:hover { border-color: #00ff88; color: #fff; }
+.mode-btn.selected { border-color: #00ff88; color: #00ff88; background: rgba(0,60,40,0.3); }
+
+#lobby-start {
+  padding: 14px 50px; background: #00ff88; color: #000; border: none;
+  font-family: 'Courier New', monospace; font-size: 1.1em; font-weight: bold;
+  border-radius: 6px; cursor: pointer; letter-spacing: 3px; margin-top: 10px;
+}
+#lobby-start:hover { background: #00ffaa; }
+
+.lobby-info { color: #334; font-size: 0.7em; margin-top: 15px; }
+
 /* ─── Mobile Touch Controls ─── */
 #touch-controls {
   display: none; position: fixed; bottom: 0; left: 0; width: 100%; height: 100%;
@@ -144,6 +191,51 @@ body { overflow: hidden; background: #000; font-family: 'Courier New', monospace
 
 <button id="logout-btn" style="display:none;" onclick="logout()">LOGOUT</button>
 
+<div id="game-lobby" class="hidden">
+  <h1>TOP GUN</h1>
+  <h2>SELECT YOUR AIRCRAFT & MISSION</h2>
+
+  <div class="lobby-section">
+    <label>AIRCRAFT</label>
+    <div class="aircraft-select">
+      <div class="aircraft-card selected" data-aircraft="F15" onclick="selectAircraft('F15')">
+        <div class="faction nato">NATO</div>
+        <h3>F-15C Eagle</h3>
+        <div class="stats">
+          SPD: Mach 2.5<br>
+          GUN: M61 Vulcan (940 rds)<br>
+          IR: AIM-9M x4<br>
+          RDR: AIM-120C x4<br>
+          <span style="color:#4488ff">+ BVR advantage</span>
+        </div>
+      </div>
+      <div class="aircraft-card" data-aircraft="MIG29" onclick="selectAircraft('MIG29')">
+        <div class="faction opfor">OPFOR</div>
+        <h3>MiG-29 Fulcrum</h3>
+        <div class="stats">
+          SPD: Mach 2.3<br>
+          GUN: GSh-30-1 (150 rds)<br>
+          IR: R-73 x4<br>
+          RDR: R-77 x2<br>
+          <span style="color:#ff6644">+ Dogfight agility</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="lobby-section">
+    <label>MISSION</label>
+    <div class="mode-btns">
+      <div class="mode-btn selected" data-mode="coop" onclick="selectMode('coop')">CO-OP vs AI WAVES</div>
+      <div class="mode-btn" data-mode="tdm" onclick="selectMode('tdm')">TEAM DEATHMATCH</div>
+      <div class="mode-btn" data-mode="ffa" onclick="selectMode('ffa')">FREE FOR ALL</div>
+    </div>
+  </div>
+
+  <button id="lobby-start" onclick="startGame()">LAUNCH</button>
+  <div class="lobby-info">Press ESC during game to return here</div>
+</div>
+
 <div id="loading">
   <h1>FLIGHT SIM</h1>
   <h2>EARTH EDITION</h2>
@@ -155,11 +247,11 @@ body { overflow: hidden; background: #000; font-family: 'Courier New', monospace
 <canvas id="hud" style="display:none;"></canvas>
 
 <div id="controls-hint" class="hidden" style="display:none;">
-  <b>H</b> — Toggle this help<br>
+  <b>H</b> — Toggle this help &nbsp;|&nbsp; <b>ESC</b> — Lobby<br>
   <b>W/S</b> — Throttle &nbsp;|&nbsp; <b>Arrows</b> — Pitch & Roll &nbsp;|&nbsp; <b>A/D</b> — Yaw<br>
-  <b>G</b> — Gear &nbsp;|&nbsp; <b>F</b> — Flaps &nbsp;|&nbsp; <b>B</b> — Brakes<br>
-  <b>C</b> — Camera &nbsp;|&nbsp; <b>N</b> — Time of Day &nbsp;|&nbsp; <b>P</b> — Autopilot Tour<br>
-  <b>T</b> — Teleport &nbsp;|&nbsp; <b>L</b> — Lights &nbsp;|&nbsp; <b>K</b> — Cache Stats
+  <b>SPACE</b> — Fire &nbsp;|&nbsp; <b>Q</b> — Cycle Weapon &nbsp;|&nbsp; <b>E</b> — Afterburner<br>
+  <b>X</b> — Flares &nbsp;|&nbsp; <b>Z</b> — Chaff &nbsp;|&nbsp; <b>G</b> — Gear &nbsp;|&nbsp; <b>B</b> — Speed Brake<br>
+  <b>C</b> — Camera &nbsp;|&nbsp; <b>N</b> — Time &nbsp;|&nbsp; <b>P</b> — Autopilot &nbsp;|&nbsp; <b>T</b> — Teleport
 </div>
 
 <!-- Mobile touch controls -->
@@ -180,12 +272,18 @@ body { overflow: hidden; background: #000; font-family: 'Courier New', monospace
     <div id="touch-throttle-label">THR</div>
   </div>
 
-  <!-- Action buttons (right side, above stick) -->
+  <!-- Flight buttons (right side) -->
   <div class="touch-btn" id="touch-gear" style="right:170px; bottom:110px;">GEAR</div>
-  <div class="touch-btn" id="touch-flaps" style="right:170px; bottom:168px;">FLAP</div>
-  <div class="touch-btn" id="touch-brake" style="right:170px; bottom:55px;">BRK</div>
+  <div class="touch-btn" id="touch-ab" style="right:170px; bottom:168px;">A/B</div>
+  <div class="touch-btn" id="touch-sbrk" style="right:170px; bottom:55px;">BRK</div>
   <div class="touch-btn" id="touch-cam" style="right:15px; bottom:175px;">CAM</div>
   <div class="touch-btn" id="touch-ap" style="right:75px; bottom:175px;">A/P</div>
+
+  <!-- Combat buttons -->
+  <div class="touch-btn" id="touch-fire" style="right:75px; bottom:55px; width:60px; height:60px; background:rgba(255,0,0,0.3); border-color:rgba(255,68,68,0.5); color:#ff4444; font-size:0.8em;">FIRE</div>
+  <div class="touch-btn touch-btn-wide" id="touch-wpn" style="right:15px; bottom:12px;">WPN</div>
+  <div class="touch-btn" id="touch-flr" style="left:170px; bottom:110px; color:#ffaa00; border-color:rgba(255,170,0,0.3);">FLR</div>
+  <div class="touch-btn" id="touch-chf" style="left:170px; bottom:55px; color:#00aaff; border-color:rgba(0,170,255,0.3);">CHF</div>
 </div>
 
 <button id="touch-help-btn" onclick="toggleHelp()">? HELP</button>
@@ -270,7 +368,9 @@ body { overflow: hidden; background: #000; font-family: 'Courier New', monospace
   </select>
 </div>
 
-<script>
+<script type="module">
+import { Game } from './js/game.js';
+
 // ─── Register Service Worker for tile caching ───
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').then(reg => {
@@ -359,6 +459,30 @@ const LOCATIONS = {
   tffj: { name: 'St. Barths',    lat: 17.8966, lon: -62.8517, alt: 50, heading: 280 },
 };
 
+// ─── Game State ───
+const game = new Game();
+let selectedAircraft = 'F15';
+let selectedMode = 'coop';
+let gameActive = false;
+
+// ─── Lobby Functions ───
+window.selectAircraft = function(type) {
+  selectedAircraft = type;
+  document.querySelectorAll('.aircraft-card').forEach(c => {
+    c.classList.toggle('selected', c.dataset.aircraft === type);
+  });
+};
+window.selectMode = function(mode) {
+  selectedMode = mode;
+  document.querySelectorAll('.mode-btn').forEach(b => {
+    b.classList.toggle('selected', b.dataset.mode === mode);
+  });
+};
+window.startGame = function() {
+  document.getElementById('game-lobby').classList.add('hidden');
+  if (window._initGame) window._initGame();
+};
+
 // ─── Auth Check ───
 const CESIUM_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJkZWFkZjE0NC04ZjA3LTQzMDYtYjE1Ni03MDhkYjQ2MTc0NGMiLCJpZCI6NDA2Njk4LCJpYXQiOjE3NzQwMTY0MzN9.m6LD7XKPhbPozNC9BnU9lfHew0jgximeVG15YeVgXEU';
 
@@ -370,7 +494,6 @@ async function checkAuthAndStart() {
       window.location.href = '/';
       return;
     }
-    // Authenticated — start sim
     document.getElementById('cesiumContainer').style.display = 'block';
     document.getElementById('hud').style.display = 'block';
     document.getElementById('controls-hint').style.display = 'block';
@@ -380,7 +503,6 @@ async function checkAuthAndStart() {
     initializeSim();
     startHeartbeat();
   } catch (err) {
-    // If API not available (local dev), just start directly
     console.warn('Auth API unavailable, starting in local mode');
     document.getElementById('cesiumContainer').style.display = 'block';
     document.getElementById('hud').style.display = 'block';
@@ -409,6 +531,7 @@ async function logout() {
   await fetch('/api/logout').catch(() => {});
   window.location.href = '/';
 }
+window.logout = logout;
 
 // ─── Help Toggle ───
 let helpVisible = false;
@@ -423,11 +546,13 @@ function toggleHelp() {
     hint.style.opacity = '0';
   }
 }
-// Expose globally for the touch button
 window.toggleHelp = toggleHelp;
 
 checkAuthAndStart();
 
+// ═══════════════════════════════════════════════════════
+// ─── Main Simulator ───
+// ═══════════════════════════════════════════════════════
 async function initializeSim() {
   const loadBar = document.getElementById('load-bar');
   const loadText = document.getElementById('load-text');
@@ -435,7 +560,7 @@ async function initializeSim() {
 
   setLoad(15, 'Creating Cesium viewer...');
 
-  // ─── Cesium Viewer (create immediately — don't block on async providers) ───
+  // ─── Cesium Viewer ───
   const viewer = new Cesium.Viewer('cesiumContainer', {
     skyAtmosphere: new Cesium.SkyAtmosphere(),
     scene3DOnly: true,
@@ -459,7 +584,6 @@ async function initializeSim() {
 
   const scene = viewer.scene;
 
-  // Scene enhancements (synchronous — apply immediately)
   scene.globe.enableLighting = true;
   scene.globe.depthTestAgainstTerrain = true;
   scene.fog.enabled = true;
@@ -475,16 +599,15 @@ async function initializeSim() {
 
   setLoad(30, 'Loading terrain...');
 
-  // ─── Load async providers in parallel (non-blocking) ───
+  // ─── Async providers in parallel ───
   const loadTerrain = Cesium.createWorldTerrainAsync({
     requestWaterMask: true,
     requestVertexNormals: true,
   }).then(tp => {
     viewer.terrainProvider = tp;
     setLoad(50, 'Terrain loaded');
-    console.log('World terrain loaded');
   }).catch(err => {
-    console.error('Terrain failed (using default ellipsoid):', err);
+    console.error('Terrain failed:', err);
     setLoad(50, 'Terrain failed — using basic globe');
   });
 
@@ -492,21 +615,18 @@ async function initializeSim() {
     viewer.imageryLayers.removeAll();
     viewer.imageryLayers.addImageryProvider(provider);
     setLoad(60, 'Satellite imagery loaded');
-    console.log('Bing imagery loaded');
   }).catch(err => {
-    console.error('Imagery failed (using default):', err);
+    console.error('Imagery failed:', err);
     setLoad(60, 'Imagery failed — using default');
   });
 
   const loadBuildings = Cesium.createOsmBuildingsAsync().then(tileset => {
     viewer.scene.primitives.add(tileset);
     setLoad(70, '3D buildings loaded');
-    console.log('OSM buildings loaded');
   }).catch(err => {
-    console.error('Buildings failed (skipping):', err);
+    console.error('Buildings failed:', err);
   });
 
-  // Wait for all to settle (but don't block on failures)
   await Promise.allSettled([loadTerrain, loadImagery, loadBuildings]);
   setLoad(80, 'All assets loaded');
 
@@ -517,40 +637,32 @@ async function initializeSim() {
   scene.screenSpaceCameraController.enableTilt = false;
   scene.screenSpaceCameraController.enableLook = false;
 
-  // ─── Flight State ───
-  const state = {
-    // Start at 1776 Norm pl Seaford, NY by default
-    longitude: Cesium.Math.toRadians(-73.4921156),
-    latitude: Cesium.Math.toRadians(40.6791576),
-    altitudeMSL: 500,    // meters above sea level
-    heading: Cesium.Math.toRadians(280), // runway heading
-    pitch: 0,
-    roll: 0,
+  // ─── Terrain height helper ───
+  function getTerrainHeight(lon, lat) {
+    const carto = new Cesium.Cartographic(lon, lat);
+    const h = scene.globe.getHeight(carto);
+    return h !== undefined ? h : 0;
+  }
 
-    speed: 0,            // m/s
-    throttle: 0,         // 0-1
-    vs: 0,               // vertical speed m/s
-    pitchRate: 0,
-    rollRate: 0,
-    yawRate: 0,
-    aoa: 0,
+  // ─── Init Game (called from lobby LAUNCH) ───
+  window._initGame = function() {
+    const loc = LOCATIONS.kjfk;
+    const lat = Cesium.Math.toRadians(loc.lat);
+    const lon = Cesium.Math.toRadians(loc.lon);
+    const alt = loc.alt + 800;
+    const heading = Cesium.Math.toRadians(loc.heading);
 
-    gForce: 1,
-    onGround: true,
-    gearDown: true,
-    flaps: 0,
-    brakes: false,
-    landingLights: false,
-    stalling: false,
-    crashed: false,
-    terrainHeight: 0,
-    agl: 0,
-
-    // Autopilot
-    autopilot: false,
-    targetLat: Cesium.Math.toRadians(40.6791576),
-    targetLon: Cesium.Math.toRadians(-73.4921156),
-    targetAlt: 500,
+    game.setGameMode(selectedMode);
+    game.init(selectedAircraft, lat, lon, alt, heading);
+    game.state.speed = 200;
+    game.state.throttle = 0.7;
+    game.state.onGround = false;
+    game.state.gearDown = false;
+    game.state.targetLat = lat;
+    game.state.targetLon = lon;
+    game.state.targetAlt = alt;
+    game.paused = false;
+    gameActive = true;
   };
 
   // ─── Controls ───
@@ -560,21 +672,36 @@ async function initializeSim() {
   window.addEventListener('keydown', (e) => {
     keys[e.key.toLowerCase()] = true;
     const k = e.key.toLowerCase();
+
+    if (k === 'h') toggleHelp();
+
+    if (!gameActive || !game.state) return;
+    const state = game.state;
+
+    // Combat keys
+    if (k === ' ') { game.firing = true; game.fireWeapon(); e.preventDefault(); }
+    if (k === 'q') game.cycleWeapon();
+    if (k === 'e') state.afterburner = !state.afterburner;
+    if (k === 'x') game.deployFlares();
+    if (k === 'z') game.deployChaff();
+    if (k === 'escape') {
+      gameActive = false;
+      game.paused = true;
+      document.getElementById('game-lobby').classList.remove('hidden');
+    }
+
+    // Flight keys
     if (k === 'g' && !(state.onGround && state.speed > 5)) state.gearDown = !state.gearDown;
-    if (k === 'f') state.flaps = (state.flaps + 1) % 4;
-    if (k === 'b') state.brakes = !state.brakes;
+    if (k === 'b') state.speedBrake = !state.speedBrake;
     if (k === 'c') cameraMode = (cameraMode + 1) % 4;
-    if (k === 'l') state.landingLights = !state.landingLights;
     if (k === 'n') cycleTimeOfDay();
-    if (k === 'r' && state.crashed) resetFlight();
+    if (k === 'r' && !state.alive) game.respawnPlayer();
     if (k === 't') document.getElementById('location-select').focus();
     if (k === 'p') {
       state.autopilot = !state.autopilot;
       showMessage(state.autopilot ? 'AUTOPILOT: TOUR GUIDE ON' : 'AUTOPILOT: OFF');
     }
-    if (k === 'h') toggleHelp();
     if (k === 'k') {
-      // Request cache stats from service worker
       if (navigator.serviceWorker?.controller) {
         navigator.serviceWorker.controller.postMessage('cache-stats');
         setTimeout(() => {
@@ -589,11 +716,15 @@ async function initializeSim() {
       }
     }
   });
-  window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 
-  // Tap-to-restart on mobile when crashed
+  window.addEventListener('keyup', (e) => {
+    keys[e.key.toLowerCase()] = false;
+    if (e.key === ' ') game.firing = false;
+  });
+
+  // Tap-to-restart on mobile
   document.getElementById('hud').addEventListener('touchstart', (e) => {
-    if (state.crashed) { resetFlight(); e.preventDefault(); }
+    if (game.state && !game.state.alive) { game.respawnPlayer(); e.preventDefault(); }
   });
 
   // ─── Location Teleport ───
@@ -612,14 +743,13 @@ async function initializeSim() {
         const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
         const data = await res.json();
         if (data && data.length > 0) {
-          const loc = {
+          teleportTo({
             name: query.toUpperCase(),
             lat: parseFloat(data[0].lat),
             lon: parseFloat(data[0].lon),
-            alt: 150, // default assumed altitude
-            heading: 0
-          };
-          teleportTo(loc);
+            alt: 150,
+            heading: 0,
+          });
         } else {
           showMessage('LOCATION NOT FOUND');
         }
@@ -637,51 +767,35 @@ async function initializeSim() {
   });
 
   function teleportTo(loc) {
-    // Spawn roughly 3.5km South of the target so the plane approaches smoothly
+    if (!game.state) return;
+    const state = game.state;
     const spawnLat = loc.lat - (3500 / 111320);
 
     state.latitude = Cesium.Math.toRadians(spawnLat);
     state.longitude = Cesium.Math.toRadians(loc.lon);
-    state.altitudeMSL = loc.alt + 600; // Start 600m above ground
-    state.heading = 0; // Heading North directly towards target
+    state.altitudeMSL = loc.alt + 600;
+    state.heading = 0;
     state.pitch = 0;
     state.roll = 0;
-    state.speed = 100; // Start flying
-    state.throttle = 0.5;
+    state.speed = 200;
+    state.throttle = 0.7;
     state.vs = 0;
     state.pitchRate = 0;
     state.rollRate = 0;
     state.yawRate = 0;
     state.onGround = false;
     state.gearDown = false;
-    state.flaps = 0;
-    state.brakes = false;
+    state.speedBrake = false;
     state.crashed = false;
     state.stalling = false;
+    state.alive = true;
+    state.health = 100;
     state.autopilot = true;
     state.targetLat = Cesium.Math.toRadians(loc.lat);
     state.targetLon = Cesium.Math.toRadians(loc.lon);
     state.targetAlt = loc.alt;
-    
-    showMessage(`TOUR GUIDE: ${loc.name.toUpperCase()}`);
-  }
 
-  function resetFlight() {
-    state.speed = 0;
-    state.throttle = 0;
-    state.vs = 0;
-    state.pitch = 0;
-    state.roll = 0;
-    state.pitchRate = 0;
-    state.rollRate = 0;
-    state.yawRate = 0;
-    state.onGround = true;
-    state.gearDown = true;
-    state.flaps = 0;
-    state.brakes = false;
-    state.crashed = false;
-    state.stalling = false;
-    state.altitudeMSL = state.terrainHeight + 10;
+    showMessage(`TOUR GUIDE: ${loc.name.toUpperCase()}`);
   }
 
   // ─── Time of Day ───
@@ -716,265 +830,192 @@ async function initializeSim() {
     messageTimeout = setTimeout(() => { currentMessage = ''; }, 3000);
   }
 
-  // ─── Physics Constants ───
-  const GRAVITY = 9.81;
-  const AIR_DENSITY_SEA = 1.225;
-  const WING_AREA = 120;
-  const MASS = 40000;
-  const MAX_THRUST = 1000000; // Significantly increased to boost max speed
-  const CL_BASE = 0.3;
-  const CL_PER_AOA = 5.5;
-  const CL_MAX = 1.8;
-  const CD_MIN = 0.025;
-  const CD_INDUCED_K = 0.04;
-  const STALL_ANGLE = 0.28;
-
-  const EARTH_RADIUS = 6378137; // meters
-
-  function getAirDensity(alt) {
-    return AIR_DENSITY_SEA * Math.exp(-alt / 10000);
-  }
-
-  setLoad(60, 'Loading satellite imagery...');
-
-  // ─── Aircraft Entity (3D model placeholder — colored box for now) ───
-  // We position this in the world and use it for the external camera views
+  // ─── Aircraft Entity (visual placeholder) ───
   const aircraftEntity = viewer.entities.add({
-    position: Cesium.Cartesian3.fromRadians(state.longitude, state.latitude, state.altitudeMSL),
-    orientation: new Cesium.ConstantProperty(Cesium.Transforms.headingPitchRollQuaternion(
-      Cesium.Cartesian3.fromRadians(state.longitude, state.latitude, state.altitudeMSL),
-      new Cesium.HeadingPitchRoll(state.heading, state.pitch, state.roll)
-    )),
+    position: Cesium.Cartesian3.fromRadians(
+      Cesium.Math.toRadians(-73.4921156),
+      Cesium.Math.toRadians(40.6791576),
+      500
+    ),
     box: {
       dimensions: new Cesium.Cartesian3(40, 6, 30),
-      material: Cesium.Color.WHITE.withAlpha(0.0), // invisible — just for reference
+      material: Cesium.Color.WHITE.withAlpha(0.0),
     }
   });
 
-  setLoad(80, 'Initializing flight computer...');
+  // ─── AI Entity Management in Cesium ───
+  const aiCesiumEntities = new Map();
 
-  // ─── Physics Update ───
-  function updatePhysics(dt) {
-    if (state.crashed || dt > 0.1) return;
-    dt = Math.min(dt, 0.05);
+  function updateWorldEntities() {
+    const state = game.state;
+    if (!state) return;
 
-    // Input
-    let pitchInput = 0, rollInput = 0, yawInput = 0;
+    // Update player entity
+    aircraftEntity.position = Cesium.Cartesian3.fromRadians(
+      state.longitude, state.latitude, state.altitudeMSL
+    );
 
-    if (state.autopilot) {
-      const targetSpeed = 80; // ~150 knots, slower for sightseeing
-      const targetAlt = state.targetAlt + 400; // Orbit just 400m above the target (tighter to the buildings)
-
-      // Auto-throttle
-      if (state.speed < targetSpeed) state.throttle = Math.min(1, state.throttle + dt * 0.2);
-      if (state.speed > targetSpeed) state.throttle = Math.max(0, state.throttle - dt * 0.2);
-      state.brakes = state.speed > targetSpeed * 1.2;
-
-      // Auto-pitch (maintain altitude smoothly)
-      const altError = targetAlt - state.altitudeMSL;
-      // Also add a little look-ahead based on vertical speed
-      const targetPitch = Cesium.Math.clamp(altError * 0.005 - state.vs * 0.01, -0.15, 0.15);
-      pitchInput = Cesium.Math.clamp((targetPitch - state.pitch) * 4, -1, 1);
-
-      // Nav - Bearing to target
-      const dLon = state.targetLon - state.longitude;
-      const y = Math.sin(dLon) * Math.cos(state.targetLat);
-      const x = Math.cos(state.latitude) * Math.sin(state.targetLat) - Math.sin(state.latitude) * Math.cos(state.targetLat) * Math.cos(dLon);
-      let bearing = Math.atan2(y, x);
-      if (bearing < 0) bearing += Math.PI * 2;
-
-      // Distance to target (equirectangular approx)
-      const dx = dLon * Math.cos((state.latitude + state.targetLat)/2);
-      const dy = state.targetLat - state.latitude;
-      const dist = Math.sqrt(dx*dx + dy*dy) * EARTH_RADIUS;
-
-      // Tour guide orbit (smooth entry)
-      let targetHeading = bearing;
-      const orbitRadius = 1200; // 1.2km radius for great downtown views
-      
-      // Smoothly blend from 0 offset (fly straight to target) at 4km to 90deg offset (tangent orbit) at orbit radius
-      if (dist < orbitRadius * 3) {
-         const blend = 1.0 - Math.min(1.0, Math.max(0.0, dist - orbitRadius) / (orbitRadius * 2));
-         const offset = (Math.PI / 2) * blend;
-         targetHeading = (bearing + offset) % (Math.PI * 2);
-      }
-
-      let currentHeading = state.heading % (Math.PI * 2);
-      if (currentHeading < 0) currentHeading += Math.PI * 2;
-      
-      let headingError = targetHeading - currentHeading;
-      if (headingError > Math.PI) headingError -= Math.PI * 2;
-      if (headingError < -Math.PI) headingError += Math.PI * 2;
-
-      // Auto-roll - soften the response to prevent crazy snapping
-      const targetRoll = Cesium.Math.clamp(headingError * 1.2, -0.45, 0.45); // Max ~25 degree bank
-      rollInput = Cesium.Math.clamp((targetRoll - state.roll) * 2.5, -1, 1);
-      
-      // Auto-gear
-      if (state.agl > 100) state.gearDown = false;
-      if (state.agl < 50) state.gearDown = true;
-    } else {
-      // Keyboard input
-      if (keys['arrowup']) pitchInput = -1;
-      if (keys['arrowdown']) pitchInput = 1;
-      if (keys['arrowleft']) rollInput = -1;
-      if (keys['arrowright']) rollInput = 1;
-      if (keys['a']) yawInput = -1;
-      if (keys['d']) yawInput = 1;
-      if (keys['w']) state.throttle = Math.min(1, state.throttle + dt * 0.5);
-      if (keys['s']) state.throttle = Math.max(0, state.throttle - dt * 0.5);
-
-      // Mobile touch input (additive — blends with keyboard)
-      if (touchInput.pitchInput !== 0) pitchInput = Cesium.Math.clamp(pitchInput + touchInput.pitchInput, -1, 1);
-      if (touchInput.rollInput !== 0) rollInput = Cesium.Math.clamp(rollInput + touchInput.rollInput, -1, 1);
-      if (touchInput.yawInput !== 0) yawInput = Cesium.Math.clamp(yawInput + touchInput.yawInput, -1, 1);
-      if (touchInput.throttleDelta !== 0) {
-        state.throttle = Cesium.Math.clamp(state.throttle + touchInput.throttleDelta * dt * 0.8, 0, 1);
-      }
-    }
-
-    const controlAuth = Math.min(1, state.speed / 80);
-    const pitchRateMax = 1.2 * controlAuth;
-    const rollRateMax = 2.0 * controlAuth;
-    const yawRateMax = 0.6 * controlAuth;
-
-    state.pitchRate += (pitchInput * pitchRateMax - state.pitchRate * 3) * dt;
-    state.rollRate += (rollInput * rollRateMax - state.rollRate * 3) * dt;
-    state.yawRate += (yawInput * yawRateMax - state.yawRate * 2) * dt;
-
-    state.pitch += state.pitchRate * dt;
-    state.roll += state.rollRate * dt;
-    state.heading += state.yawRate * dt;
-
-    // Auto-level roll
-    if (!keys['arrowleft'] && !keys['arrowright']) {
-      state.roll *= (1 - 0.3 * dt);
-    }
-    state.pitch = Cesium.Math.clamp(state.pitch, -Math.PI / 3, Math.PI / 3);
-
-    // Forward direction in local frame
-    const cosPitch = Math.cos(state.pitch);
-    const sinPitch = Math.sin(state.pitch);
-    const cosHeading = Math.cos(state.heading);
-    const sinHeading = Math.sin(state.heading);
-
-    // Air density
-    const rho = getAirDensity(state.altitudeMSL);
-    const dynamicPressure = 0.5 * rho * state.speed * state.speed;
-
-    // AOA (simplified: pitch angle relative to velocity)
-    state.aoa = state.pitch;
-
-    // Lift
-    const flapBonus = state.flaps * 0.15;
-    let CL = CL_BASE + CL_PER_AOA * state.aoa + flapBonus;
-    state.stalling = Math.abs(state.aoa) > STALL_ANGLE;
-    if (state.stalling) CL *= 0.4;
-    CL = Cesium.Math.clamp(CL, -CL_MAX, CL_MAX + flapBonus);
-    const lift = dynamicPressure * WING_AREA * CL;
-
-    // Drag
-    const CD = CD_MIN + CD_INDUCED_K * CL * CL
-      + (state.gearDown ? 0.015 : 0)
-      + (state.flaps * 0.008)
-      + (state.brakes ? 0.05 : 0);
-    const drag = dynamicPressure * WING_AREA * CD;
-
-    // Thrust
-    const thrust = MAX_THRUST * state.throttle * (0.8 + 0.2 * (rho / AIR_DENSITY_SEA));
-
-    // Force balance along flight path
-    const netForward = thrust - drag - MASS * GRAVITY * sinPitch;
-    const netUp = lift * cosPitch - MASS * GRAVITY * cosPitch;
-
-    // Acceleration
-    const accelForward = netForward / MASS;
-    const accelUp = netUp / MASS;
-
-    // Speed integration
-    state.speed += accelForward * dt;
-    state.speed = Math.max(0, state.speed);
-
-    // Vertical speed
-    state.vs = state.speed * sinPitch + (accelUp / (state.speed > 1 ? state.speed : 1)) * dt * state.speed;
-    // Simplified: use pitch angle for vertical component
-    const verticalSpeed = state.speed * Math.sin(state.pitch);
-    const horizontalSpeed = state.speed * Math.cos(state.pitch);
-
-    // Bank-induced turn
-    if (!state.onGround && state.speed > 30) {
-      const turnRate = (GRAVITY * Math.tan(state.roll)) / Math.max(state.speed, 30);
-      state.heading += turnRate * dt;
-    }
-
-    // Ground steering
-    if (state.onGround && state.speed < 50) {
-      if (keys['a']) state.heading -= 0.8 * dt;
-      if (keys['d']) state.heading += 0.8 * dt;
-    }
-
-    // Position update (great circle approximation for short dt)
-    state.altitudeMSL += verticalSpeed * dt;
-    state.latitude += (horizontalSpeed * Math.cos(state.heading) * dt) / EARTH_RADIUS;
-    state.longitude += (horizontalSpeed * Math.sin(state.heading) * dt) / (EARTH_RADIUS * Math.cos(state.latitude));
-
-    // Terrain sampling
-    const cartographic = new Cesium.Cartographic(state.longitude, state.latitude);
-    const terrainHeight = scene.globe.getHeight(cartographic);
-    if (terrainHeight !== undefined) {
-      state.terrainHeight = terrainHeight;
-    }
-    state.agl = state.altitudeMSL - state.terrainHeight;
-
-    // Ground collision
-    const gearHeight = state.gearDown ? 8 : 2;
-    state.onGround = state.agl <= gearHeight + 0.5;
-
-    if (state.onGround) {
-      state.altitudeMSL = state.terrainHeight + gearHeight;
-      state.agl = gearHeight;
-
-      if (state.vs < -0.5) state.vs = 0;
-
-      // Ground friction
-      if (state.brakes) {
-        state.speed *= (1 - 1.5 * dt);
-        if (state.speed < 0.5) state.speed = 0;
+    // Sync AI entities
+    const currentAIs = new Set();
+    for (const ai of game.aiUnits) {
+      currentAIs.add(ai.id);
+      if (!aiCesiumEntities.has(ai.id)) {
+        const isFriendly = ai.team === game.playerTeam;
+        const entity = viewer.entities.add({
+          position: Cesium.Cartesian3.fromRadians(ai.longitude, ai.latitude, ai.altitudeMSL),
+          box: {
+            dimensions: new Cesium.Cartesian3(25, 5, 18),
+            material: isFriendly
+              ? Cesium.Color.DODGERBLUE.withAlpha(0.8)
+              : Cesium.Color.RED.withAlpha(0.8),
+          },
+          label: {
+            text: ai.name,
+            font: '11px Courier New',
+            fillColor: Cesium.Color.WHITE,
+            outlineColor: Cesium.Color.BLACK,
+            outlineWidth: 2,
+            style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+            pixelOffset: new Cesium.Cartesian2(0, -20),
+            distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 12000),
+          },
+        });
+        aiCesiumEntities.set(ai.id, entity);
       } else {
-        state.speed *= (1 - 0.05 * dt);
-      }
-
-      // Prevent nose-down on ground
-      if (state.pitch > 0.05) state.pitch *= 0.95;
-      if (state.pitch < -0.02) state.pitch = -0.02;
-
-      // Crash detection
-      if (!state.gearDown && state.speed > 10) {
-        state.crashed = true;
-        showMessage('CRASHED — Gear was up!');
-      }
-      if (verticalSpeed < -12 && state.speed > 30) {
-        state.crashed = true;
-        showMessage('CRASHED — Too hard!');
+        aiCesiumEntities.get(ai.id).position = Cesium.Cartesian3.fromRadians(
+          ai.longitude, ai.latitude, ai.altitudeMSL
+        );
       }
     }
 
-    // G-force
-    state.gForce = 1 + accelUp / GRAVITY;
+    // Remove dead AI entities
+    for (const [id, entity] of aiCesiumEntities) {
+      if (!currentAIs.has(id)) {
+        viewer.entities.remove(entity);
+        aiCesiumEntities.delete(id);
+      }
+    }
 
-    // Vertical speed for display
-    state.vs = verticalSpeed;
+    // Missile visual trails
+    for (const m of game.getVisibleMissiles()) {
+      if (!m._cesiumTrail && m.trail.length > 1) {
+        m._cesiumTrail = viewer.entities.add({
+          polyline: {
+            positions: new Cesium.CallbackProperty(() => {
+              return m.trail.map(p =>
+                Cesium.Cartesian3.fromRadians(p.lon, p.lat, p.alt)
+              );
+            }, false),
+            width: 2,
+            material: new Cesium.PolylineGlowMaterialProperty({
+              glowPower: 0.3,
+              color: Cesium.Color.ORANGE,
+            }),
+          },
+        });
+      }
+    }
+
+    // Clean up dead missile trails
+    for (const m of game.weaponManager.missiles) {
+      if (!m.alive && m._cesiumTrail) {
+        viewer.entities.remove(m._cesiumTrail);
+        m._cesiumTrail = null;
+      }
+    }
+
+    // Explosion flashes
+    for (const exp of game.getExplosions()) {
+      if (!exp._cesiumBillboard && exp.age < 0.5) {
+        exp._cesiumBillboard = viewer.entities.add({
+          position: Cesium.Cartesian3.fromRadians(exp.lon, exp.lat, exp.alt),
+          billboard: {
+            image: createExplosionCanvas(),
+            scale: 0.5 + exp.age * 2,
+            color: Cesium.Color.ORANGE.withAlpha(1 - exp.age / exp.maxAge),
+          },
+        });
+      }
+      if (exp._cesiumBillboard && exp.age > exp.maxAge * 0.8) {
+        viewer.entities.remove(exp._cesiumBillboard);
+        exp._cesiumBillboard = null;
+      }
+    }
+  }
+
+  // Simple explosion texture
+  let _explosionCanvas = null;
+  function createExplosionCanvas() {
+    if (_explosionCanvas) return _explosionCanvas;
+    const c = document.createElement('canvas');
+    c.width = 64; c.height = 64;
+    const ctx2 = c.getContext('2d');
+    const grad = ctx2.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, 'rgba(255,200,50,1)');
+    grad.addColorStop(0.4, 'rgba(255,100,0,0.8)');
+    grad.addColorStop(1, 'rgba(255,0,0,0)');
+    ctx2.fillStyle = grad;
+    ctx2.fillRect(0, 0, 64, 64);
+    _explosionCanvas = c;
+    return c;
+  }
+
+  // ─── Autopilot Input Generator ───
+  const EARTH_RADIUS = 6378137;
+
+  function generateAutopilotInput(input, state, dt) {
+    const targetSpeed = 120;
+    const targetAlt = state.targetAlt + 400;
+
+    if (state.speed < targetSpeed) input.throttleUp = true;
+    if (state.speed > targetSpeed * 1.3) input.throttleDown = true;
+
+    const altError = targetAlt - state.altitudeMSL;
+    const targetPitch = Math.max(-0.15, Math.min(0.15, altError * 0.005 - state.vs * 0.01));
+    input.pitchInput = Math.max(-1, Math.min(1, (targetPitch - state.pitch) * 4));
+
+    const dLon = state.targetLon - state.longitude;
+    const y = Math.sin(dLon) * Math.cos(state.targetLat);
+    const x = Math.cos(state.latitude) * Math.sin(state.targetLat)
+            - Math.sin(state.latitude) * Math.cos(state.targetLat) * Math.cos(dLon);
+    let bearing = Math.atan2(y, x);
+    if (bearing < 0) bearing += Math.PI * 2;
+
+    const dx = dLon * Math.cos((state.latitude + state.targetLat) / 2);
+    const dy = state.targetLat - state.latitude;
+    const dist = Math.sqrt(dx * dx + dy * dy) * EARTH_RADIUS;
+
+    let targetHeading = bearing;
+    const orbitRadius = 1200;
+    if (dist < orbitRadius * 3) {
+      const blend = 1.0 - Math.min(1.0, Math.max(0.0, dist - orbitRadius) / (orbitRadius * 2));
+      const offset = (Math.PI / 2) * blend;
+      targetHeading = (bearing + offset) % (Math.PI * 2);
+    }
+
+    let currentHeading = state.heading % (Math.PI * 2);
+    if (currentHeading < 0) currentHeading += Math.PI * 2;
+    let headingError = targetHeading - currentHeading;
+    if (headingError > Math.PI) headingError -= Math.PI * 2;
+    if (headingError < -Math.PI) headingError += Math.PI * 2;
+
+    const targetRoll = Math.max(-0.45, Math.min(0.45, headingError * 1.2));
+    input.rollInput = Math.max(-1, Math.min(1, (targetRoll - state.roll) * 2.5));
+
+    if (state.agl > 100) state.gearDown = false;
+    if (state.agl < 50) state.gearDown = true;
   }
 
   // ─── Camera Update ───
   function updateCamera() {
+    const state = game.state;
+    if (!state) return;
+
     const pos = Cesium.Cartesian3.fromRadians(state.longitude, state.latitude, state.altitudeMSL);
-    const hpr = new Cesium.HeadingPitchRoll(state.heading, state.pitch, state.roll);
+    const transform = Cesium.Transforms.eastNorthUpToFixedFrame(pos);
 
     if (cameraMode === 0) {
-      // Chase camera — behind and above
-      const offset = new Cesium.HeadingPitchRange(state.heading + Math.PI, -0.15, 120);
-      const transform = Cesium.Transforms.eastNorthUpToFixedFrame(pos);
+      // Chase camera
       const behindLocal = new Cesium.Cartesian3(
         -Math.sin(state.heading) * 100,
         -Math.cos(state.heading) * 100,
@@ -982,18 +1023,12 @@ async function initializeSim() {
       );
       const cameraPos = new Cesium.Cartesian3();
       Cesium.Matrix4.multiplyByPoint(transform, behindLocal, cameraPos);
-
       scene.camera.setView({
         destination: cameraPos,
-        orientation: {
-          heading: state.heading,
-          pitch: -0.12,
-          roll: 0,
-        }
+        orientation: { heading: state.heading, pitch: -0.12, roll: 0 }
       });
     } else if (cameraMode === 1) {
-      // Cockpit camera
-      const transform = Cesium.Transforms.eastNorthUpToFixedFrame(pos);
+      // Cockpit
       const cockpitLocal = new Cesium.Cartesian3(
         Math.sin(state.heading) * 8,
         Math.cos(state.heading) * 8,
@@ -1001,18 +1036,12 @@ async function initializeSim() {
       );
       const cockpitPos = new Cesium.Cartesian3();
       Cesium.Matrix4.multiplyByPoint(transform, cockpitLocal, cockpitPos);
-
       scene.camera.setView({
         destination: cockpitPos,
-        orientation: {
-          heading: state.heading,
-          pitch: state.pitch - 0.05,
-          roll: state.roll,
-        }
+        orientation: { heading: state.heading, pitch: state.pitch - 0.05, roll: state.roll }
       });
     } else if (cameraMode === 2) {
-      // Orbit / cinematic (slightly offset to the side)
-      const transform = Cesium.Transforms.eastNorthUpToFixedFrame(pos);
+      // Cinematic
       const sideLocal = new Cesium.Cartesian3(
         -Math.sin(state.heading + 0.5) * 150,
         -Math.cos(state.heading + 0.5) * 150,
@@ -1020,18 +1049,12 @@ async function initializeSim() {
       );
       const cameraPos = new Cesium.Cartesian3();
       Cesium.Matrix4.multiplyByPoint(transform, sideLocal, cameraPos);
-
       scene.camera.setView({
         destination: cameraPos,
-        orientation: {
-          heading: state.heading + 0.3,
-          pitch: -0.1,
-          roll: 0,
-        }
+        orientation: { heading: state.heading + 0.3, pitch: -0.1, roll: 0 }
       });
     } else if (cameraMode === 3) {
-      // Low flyby
-      const transform = Cesium.Transforms.eastNorthUpToFixedFrame(pos);
+      // Flyby
       const flybyLocal = new Cesium.Cartesian3(
         Math.sin(state.heading) * 50 + Math.cos(state.heading) * 80,
         Math.cos(state.heading) * 50 - Math.sin(state.heading) * 80,
@@ -1039,19 +1062,12 @@ async function initializeSim() {
       );
       const cameraPos = new Cesium.Cartesian3();
       Cesium.Matrix4.multiplyByPoint(transform, flybyLocal, cameraPos);
-
-      // Look at aircraft
       scene.camera.setView({
         destination: cameraPos,
-        orientation: {
-          heading: state.heading + Math.PI + 0.5,
-          pitch: 0.05,
-          roll: 0,
-        }
+        orientation: { heading: state.heading + Math.PI + 0.5, pitch: 0.05, roll: 0 }
       });
     }
 
-    // Update aircraft entity position for reference
     aircraftEntity.position = pos;
   }
 
@@ -1060,6 +1076,9 @@ async function initializeSim() {
   const ctx = hudCanvas.getContext('2d');
 
   function drawHUD() {
+    const state = game.state;
+    if (!state) return;
+
     hudCanvas.width = window.innerWidth;
     hudCanvas.height = window.innerHeight;
     ctx.clearRect(0, 0, hudCanvas.width, hudCanvas.height);
@@ -1076,10 +1095,9 @@ async function initializeSim() {
     const hdgStr = hdg.toFixed(0).padStart(3, '0');
     const vsFpm = (state.vs * 196.85).toFixed(0);
     const thr = (state.throttle * 100).toFixed(0);
-    const mach = (state.speed / 343).toFixed(2);
+    const mach = state.mach !== undefined ? state.mach.toFixed(2) : (state.speed / 343).toFixed(2);
     const gf = state.gForce.toFixed(1);
     const pitchDeg = Cesium.Math.toDegrees(state.pitch);
-    const rollDeg = Cesium.Math.toDegrees(state.roll);
 
     if (cameraMode === 1) {
       // ─── Full Cockpit HUD ───
@@ -1230,9 +1248,8 @@ async function initializeSim() {
 
       let statStr = '';
       if (state.gearDown) statStr += ' GEAR';
-      if (state.flaps > 0) statStr += ` FLAP${state.flaps}`;
-      if (state.brakes) statStr += ' BRK';
-      if (state.landingLights) statStr += ' LAND';
+      if (state.speedBrake) statStr += ' SBRK';
+      if (state.afterburner && state.throttle > 0.95) statStr += ' AB';
       ctx.fillText(statStr, 570, botY + 15);
 
       // Coordinates
@@ -1262,20 +1279,17 @@ async function initializeSim() {
       ctx.textAlign = 'left';
 
       if (mobile) {
-        // Compact 2-row layout for mobile
         ctx.fillText(`${kts}KT  ALT${altFt}  HDG${hdgStr}`, 8, textY);
         ctx.fillText(`THR${thr}% VS${vsFpm} AGL${aglFt}`, 8, row2Y);
 
-        // Status on right side
         ctx.textAlign = 'right';
         let statParts = [];
         if (state.gearDown) statParts.push('GR');
-        if (state.flaps > 0) statParts.push('F' + state.flaps);
-        if (state.brakes) statParts.push('BK');
+        if (state.speedBrake) statParts.push('BK');
+        if (state.afterburner && state.throttle > 0.95) statParts.push('AB');
         if (state.autopilot) statParts.push('AP');
         ctx.fillText(statParts.join(' '), w - 8, textY);
       } else {
-        // Desktop layout
         ctx.fillText(`SPD: ${kts} KTS  M${mach}`, 20, textY);
         ctx.fillText(`ALT: ${altFt} FT`, 260, textY);
         ctx.fillText(`HDG: ${hdgStr}°`, 440, textY);
@@ -1286,11 +1300,11 @@ async function initializeSim() {
 
         let sx = 1100;
         if (state.gearDown) { ctx.fillStyle = '#00ff00'; ctx.fillText('GEAR', sx, textY); sx += 60; }
-        if (state.flaps > 0) { ctx.fillStyle = '#00ccff'; ctx.fillText(`FLAP${state.flaps}`, sx, textY); sx += 70; }
-        if (state.brakes) { ctx.fillStyle = '#ff4444'; ctx.fillText('BRK', sx, textY); sx += 50; }
+        if (state.speedBrake) { ctx.fillStyle = '#ff4444'; ctx.fillText('SBRK', sx, textY); sx += 60; }
+        if (state.afterburner && state.throttle > 0.95) { ctx.fillStyle = '#ff8800'; ctx.fillText('AB', sx, textY); sx += 40; }
       }
 
-      // Throttle bar (skip on mobile — has touch slider instead)
+      // Throttle bar (skip on mobile)
       if (!mobile) {
         const barX = 15, barY = 65, barH = 150, barW = 8;
         ctx.fillStyle = 'rgba(0,0,0,0.4)';
@@ -1304,7 +1318,6 @@ async function initializeSim() {
         ctx.font = `${smallFont}px "Courier New"`;
         ctx.fillText('THR', barX - 2, barY + barH + 16);
 
-        // Coordinates
         ctx.textAlign = 'right';
         ctx.fillStyle = 'rgba(0,255,136,0.4)';
         ctx.fillText(
@@ -1314,13 +1327,12 @@ async function initializeSim() {
       }
     }
 
-    // Cache status (bottom right, subtle)
+    // Cache status
     if (cacheStats) {
       ctx.font = '10px "Courier New"';
       ctx.textAlign = 'right';
       ctx.fillStyle = 'rgba(0,255,136,0.3)';
       ctx.fillText(`CACHE ${cacheStats.totalMB}/${cacheStats.maxMB}MB`, w - 15, h - 8);
-      ctx.font = '14px "Courier New"';
     }
 
     // Camera mode label
@@ -1341,17 +1353,17 @@ async function initializeSim() {
       if (blink) ctx.fillText('STALL', cx, cy + (isSmall ? 80 : 140));
     }
 
-    // Crash
-    if (state.crashed) {
+    // Death / crash
+    if (!state.alive || state.crashed) {
       ctx.fillStyle = 'rgba(255,0,0,0.15)';
       ctx.fillRect(0, 0, w, h);
       ctx.fillStyle = '#ff0000';
       ctx.font = `bold ${isSmall ? 28 : 36}px "Courier New"`;
       ctx.textAlign = 'center';
-      ctx.fillText('CRASH', cx, cy - 10);
+      ctx.fillText(state.crashed ? 'CRASH' : 'DESTROYED', cx, cy - 10);
       ctx.font = `${isSmall ? 14 : 18}px "Courier New"`;
       ctx.fillStyle = '#ff8888';
-      ctx.fillText(isSmall ? 'Tap to restart' : 'Press R to restart', cx, cy + 25);
+      ctx.fillText(isSmall ? 'Tap to respawn' : 'Press R to respawn', cx, cy + 25);
     }
 
     // Message display
@@ -1361,22 +1373,31 @@ async function initializeSim() {
       ctx.fillStyle = '#00ff88';
       ctx.fillText(currentMessage, cx, isSmall ? 55 : 120);
     }
+
+    // ─── Combat HUD overlay ───
+    if (gameActive) {
+      game.drawCombatHUD(ctx, w, h);
+    }
   }
 
-  // ─── Loading Complete ───
+  // ─── Loading Complete → Show Lobby ───
   setLoad(100, 'Ready for takeoff!');
 
   setTimeout(() => {
     const loading = document.getElementById('loading');
     loading.style.opacity = '0';
     setTimeout(() => loading.style.display = 'none', 1500);
-    // Show help briefly on start, then hide
-    const hint = document.getElementById('controls-hint');
+
+    // Show game lobby
+    document.getElementById('game-lobby').classList.remove('hidden');
+
+    // Show help briefly
     helpVisible = true;
+    const hint = document.getElementById('controls-hint');
     hint.classList.remove('hidden');
     hint.style.opacity = '1';
     setTimeout(() => {
-      if (helpVisible) { // only auto-hide if user hasn't toggled
+      if (helpVisible) {
         helpVisible = false;
         hint.classList.add('hidden');
         hint.style.opacity = '0';
@@ -1390,13 +1411,13 @@ async function initializeSim() {
 
   if (isMobile) {
     setupTouchStick('stick-left', 'knob-left', (dx, dy) => {
-      touchInput.yawInput = dx;        // X axis = yaw
-      touchInput.throttleDelta = -dy;  // Y axis up = more throttle
+      touchInput.yawInput = dx;
+      touchInput.throttleDelta = -dy;
     });
 
     setupTouchStick('stick-right', 'knob-right', (dx, dy) => {
-      touchInput.rollInput = dx;      // X axis = roll
-      touchInput.pitchInput = dy;     // Y axis down = pitch up (pull back)
+      touchInput.rollInput = dx;
+      touchInput.pitchInput = dy;
     });
 
     // Throttle slider
@@ -1422,27 +1443,47 @@ async function initializeSim() {
     });
 
     function updateThrottleFromTouch(touch) {
+      if (!game.state) return;
       const rect = throttleArea.getBoundingClientRect();
       const y = touch.clientY - rect.top;
-      state.throttle = Cesium.Math.clamp(1 - y / rect.height, 0, 1);
-      throttleFill.style.height = (state.throttle * 100) + '%';
+      game.state.throttle = Math.max(0, Math.min(1, 1 - y / rect.height));
+      throttleFill.style.height = (game.state.throttle * 100) + '%';
     }
 
-    // Action buttons
+    // Flight buttons
     setupTouchButton('touch-gear', () => {
-      if (!(state.onGround && state.speed > 5)) state.gearDown = !state.gearDown;
+      if (!game.state) return;
+      if (!(game.state.onGround && game.state.speed > 5)) game.state.gearDown = !game.state.gearDown;
     });
-    setupTouchButton('touch-flaps', () => { state.flaps = (state.flaps + 1) % 4; });
-    setupTouchButton('touch-brake', () => { state.brakes = !state.brakes; }, true);
+    setupTouchButton('touch-ab', () => {
+      if (game.state) game.state.afterburner = !game.state.afterburner;
+    });
+    setupTouchButton('touch-sbrk', () => {
+      if (game.state) game.state.speedBrake = !game.state.speedBrake;
+    }, true);
     setupTouchButton('touch-cam', () => { cameraMode = (cameraMode + 1) % 4; });
     setupTouchButton('touch-ap', () => {
-      state.autopilot = !state.autopilot;
-      showMessage(state.autopilot ? 'AUTOPILOT: TOUR GUIDE ON' : 'AUTOPILOT: OFF');
+      if (!game.state) return;
+      game.state.autopilot = !game.state.autopilot;
+      showMessage(game.state.autopilot ? 'AUTOPILOT: TOUR GUIDE ON' : 'AUTOPILOT: OFF');
     });
+
+    // Combat buttons
+    setupTouchButton('touch-fire', () => {
+      game.firing = true; game.fireWeapon();
+    });
+    document.getElementById('touch-fire').addEventListener('touchend', () => {
+      game.firing = false;
+    });
+    setupTouchButton('touch-wpn', () => { game.cycleWeapon(); });
+    setupTouchButton('touch-flr', () => { game.deployFlares(); });
+    setupTouchButton('touch-chf', () => { game.deployChaff(); });
 
     // Update throttle fill on every frame
     viewer.scene.preRender.addEventListener(() => {
-      throttleFill.style.height = (state.throttle * 100) + '%';
+      if (game.state) {
+        throttleFill.style.height = (game.state.throttle * 100) + '%';
+      }
     });
   }
 
@@ -1487,7 +1528,6 @@ async function initializeSim() {
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist > 1) { dx /= dist; dy /= dist; }
       knob.style.transform = `translate(calc(-50% + ${dx * radius * 0.6}px), calc(-50% + ${dy * radius * 0.6}px))`;
-      // Apply deadzone
       if (Math.abs(dx) < 0.1) dx = 0;
       if (Math.abs(dy) < 0.1) dy = 0;
       onMove(dx, dy);
@@ -1496,6 +1536,7 @@ async function initializeSim() {
 
   function setupTouchButton(id, action, isToggle) {
     const btn = document.getElementById(id);
+    if (!btn) return;
     btn.addEventListener('touchstart', (e) => {
       e.preventDefault();
       btn.classList.add('active');
@@ -1512,10 +1553,57 @@ async function initializeSim() {
 
   viewer.scene.preRender.addEventListener(() => {
     const now = performance.now();
-    const dt = (now - lastTime) / 1000;
+    const dt = Math.min((now - lastTime) / 1000, 0.1);
     lastTime = now;
 
-    updatePhysics(dt);
+    if (!gameActive || !game.state) return;
+
+    const state = game.state;
+
+    // Build control input
+    const controlInput = {
+      pitchInput: 0,
+      rollInput: 0,
+      yawInput: 0,
+      throttleUp: false,
+      throttleDown: false,
+    };
+
+    if (state.autopilot) {
+      generateAutopilotInput(controlInput, state, dt);
+    } else {
+      if (keys['arrowup']) controlInput.pitchInput = -1;
+      if (keys['arrowdown']) controlInput.pitchInput = 1;
+      if (keys['arrowleft']) controlInput.rollInput = -1;
+      if (keys['arrowright']) controlInput.rollInput = 1;
+      if (keys['a']) controlInput.yawInput = -1;
+      if (keys['d']) controlInput.yawInput = 1;
+      if (keys['w']) controlInput.throttleUp = true;
+      if (keys['s']) controlInput.throttleDown = true;
+
+      // Mobile touch input (additive)
+      if (touchInput.pitchInput !== 0) {
+        controlInput.pitchInput = Math.max(-1, Math.min(1, controlInput.pitchInput + touchInput.pitchInput));
+      }
+      if (touchInput.rollInput !== 0) {
+        controlInput.rollInput = Math.max(-1, Math.min(1, controlInput.rollInput + touchInput.rollInput));
+      }
+      if (touchInput.yawInput !== 0) {
+        controlInput.yawInput = Math.max(-1, Math.min(1, controlInput.yawInput + touchInput.yawInput));
+      }
+      if (touchInput.throttleDelta !== 0) {
+        if (touchInput.throttleDelta > 0) controlInput.throttleUp = true;
+        if (touchInput.throttleDelta < 0) controlInput.throttleDown = true;
+      }
+    }
+
+    // Update game (physics, AI, weapons, combat)
+    game.update(dt, controlInput, getTerrainHeight);
+
+    // Update Cesium world entities (AI boxes, missile trails, explosions)
+    updateWorldEntities();
+
+    // Update camera and draw HUD
     updateCamera();
     drawHUD();
   });
