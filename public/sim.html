@@ -196,15 +196,14 @@ body { overflow: hidden; background: #000; font-family: 'Courier New', monospace
 
   <div class="lobby-section">
     <label>AIRCRAFT</label>
-    <div class="aircraft-select">
+    <div class="aircraft-select" style="flex-wrap:wrap;">
       <div class="aircraft-card selected" data-aircraft="F15" onclick="selectAircraft('F15')">
         <div class="faction nato">NATO</div>
         <h3>F-15C Eagle</h3>
         <div class="stats">
           SPD: Mach 2.5<br>
           GUN: M61 Vulcan (940 rds)<br>
-          IR: AIM-9M x4<br>
-          RDR: AIM-120C x4<br>
+          IR: AIM-9M x4 | RDR: AIM-120C x4<br>
           <span style="color:#4488ff">+ BVR advantage</span>
         </div>
       </div>
@@ -214,21 +213,65 @@ body { overflow: hidden; background: #000; font-family: 'Courier New', monospace
         <div class="stats">
           SPD: Mach 2.3<br>
           GUN: GSh-30-1 (150 rds)<br>
-          IR: R-73 x4<br>
-          RDR: R-77 x2<br>
+          IR: R-73 x4 | RDR: R-77 x2<br>
           <span style="color:#ff6644">+ Dogfight agility</span>
+        </div>
+      </div>
+      <div class="aircraft-card" data-aircraft="SU27" onclick="selectAircraft('SU27')">
+        <div class="faction opfor">OPFOR</div>
+        <h3>Su-27 Flanker</h3>
+        <div class="stats">
+          SPD: Mach 2.35<br>
+          GUN: GSh-30-1 (150 rds)<br>
+          IR: R-73 x6 | RDR: R-77 x4<br>
+          <span style="color:#ff6644">+ Cobra maneuver</span>
+        </div>
+      </div>
+      <div class="aircraft-card" data-aircraft="AH64" onclick="selectAircraft('AH64')">
+        <div class="faction nato">NATO</div>
+        <h3>AH-64D Apache</h3>
+        <div class="stats">
+          SPD: 175 KTS (Helicopter)<br>
+          GUN: M230 Chain Gun (1200 rds)<br>
+          Hydra x38 | Hellfire x8<br>
+          <span style="color:#4488ff">+ Hover & VTOL</span>
+        </div>
+      </div>
+      <div class="aircraft-card" data-aircraft="B2" onclick="selectAircraft('B2')">
+        <div class="faction nato">NATO</div>
+        <h3>B-2 Spirit</h3>
+        <div class="stats">
+          SPD: Subsonic stealth bomber<br>
+          JDAM x16 precision bombs<br>
+          No gun | No missiles<br>
+          <span style="color:#4488ff">+ Stealth & payload</span>
+        </div>
+      </div>
+      <div class="aircraft-card" data-aircraft="C172" onclick="selectAircraft('C172')">
+        <div class="faction nato">CIVILIAN</div>
+        <h3>Cessna 172</h3>
+        <div class="stats">
+          SPD: 145 KTS (prop)<br>
+          No weapons<br>
+          Great visibility & handling<br>
+          <span style="color:#88aacc">+ Sightseeing & training</span>
         </div>
       </div>
     </div>
   </div>
 
   <div class="lobby-section">
-    <label>MISSION</label>
+    <label>GAME MODE</label>
     <div class="mode-btns">
       <div class="mode-btn selected" data-mode="coop" onclick="selectMode('coop')">CO-OP vs AI WAVES</div>
       <div class="mode-btn" data-mode="tdm" onclick="selectMode('tdm')">TEAM DEATHMATCH</div>
       <div class="mode-btn" data-mode="ffa" onclick="selectMode('ffa')">FREE FOR ALL</div>
     </div>
+  </div>
+
+  <div class="lobby-section" id="mission-section">
+    <label>CAMPAIGN MISSIONS</label>
+    <div class="mode-btns" id="mission-list" style="max-width:600px; margin:0 auto;"></div>
   </div>
 
   <button id="lobby-start" onclick="startGame()">LAUNCH</button>
@@ -250,7 +293,8 @@ body { overflow: hidden; background: #000; font-family: 'Courier New', monospace
   <b>W/S</b> — Throttle &nbsp;|&nbsp; <b>Arrows</b> — Pitch & Roll &nbsp;|&nbsp; <b>A/D</b> — Yaw<br>
   <b>SPACE</b> — Fire &nbsp;|&nbsp; <b>Q</b> — Cycle Weapon &nbsp;|&nbsp; <b>E</b> — Afterburner<br>
   <b>X</b> — Flares &nbsp;|&nbsp; <b>Z</b> — Chaff &nbsp;|&nbsp; <b>G</b> — Gear &nbsp;|&nbsp; <b>B</b> — Speed Brake<br>
-  <b>C</b> — Camera &nbsp;|&nbsp; <b>N</b> — Time &nbsp;|&nbsp; <b>P</b> — Autopilot &nbsp;|&nbsp; <b>T</b> — Teleport
+  <b>C</b> — Camera &nbsp;|&nbsp; <b>N</b> — Time &nbsp;|&nbsp; <b>P</b> — Autopilot &nbsp;|&nbsp; <b>T</b> — Teleport<br>
+  <b>M</b> — Weather &nbsp;|&nbsp; <b>V</b> — Volume &nbsp;|&nbsp; <b>L</b> — Leaderboard &nbsp;|&nbsp; <b>TAB</b> — Scoreboard
 </div>
 
 <!-- Mobile touch controls -->
@@ -371,6 +415,16 @@ body { overflow: hidden; background: #000; font-family: 'Courier New', monospace
 
 <script type="module">
 import { Game } from './js/game.js';
+import { AIFighter } from './js/ai.js';
+import { SoundEngine } from './js/sound.js';
+import { WeatherSystem } from './js/weather.js';
+import { MissionSystem } from './js/missions.js';
+import { Leaderboard } from './js/leaderboard.js';
+
+const soundEngine = new SoundEngine();
+const weatherSystem = new WeatherSystem();
+const missionSystem = new MissionSystem();
+const leaderboard = new Leaderboard();
 
 // ─── Register Service Worker for tile caching ───
 if ('serviceWorker' in navigator) {
@@ -464,7 +518,10 @@ const LOCATIONS = {
 const game = new Game();
 let selectedAircraft = 'F15';
 let selectedMode = 'coop';
+let selectedMission = null;
 let gameActive = false;
+let showLeaderboardOverlay = false;
+let showSummaryOverlay = false;
 
 // ─── Lobby Functions ───
 window.selectAircraft = function(type) {
@@ -475,14 +532,44 @@ window.selectAircraft = function(type) {
 };
 window.selectMode = function(mode) {
   selectedMode = mode;
+  selectedMission = null;
   document.querySelectorAll('.mode-btn').forEach(b => {
     b.classList.toggle('selected', b.dataset.mode === mode);
   });
+  document.querySelectorAll('.mission-btn').forEach(b => b.classList.remove('selected'));
+};
+window.selectMission = function(id) {
+  selectedMission = id;
+  selectedMode = 'mission';
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('selected'));
+  document.querySelectorAll('.mission-btn').forEach(b => {
+    b.classList.toggle('selected', b.dataset.mission === id);
+  });
+  // Auto-select required aircraft
+  const m = missionSystem.getMission(id);
+  if (m && m.aircraft && m.aircraft.length === 1) {
+    window.selectAircraft(m.aircraft[0]);
+  }
 };
 window.startGame = function() {
+  soundEngine.init(); // needs user gesture
   document.getElementById('game-lobby').classList.add('hidden');
   if (window._initGame) window._initGame();
 };
+
+// Populate mission list
+function populateMissions() {
+  const list = document.getElementById('mission-list');
+  if (!list) return;
+  const missions = missionSystem.getMissions();
+  list.innerHTML = missions.map(m =>
+    `<div class="mode-btn mission-btn" data-mission="${m.id}" onclick="selectMission('${m.id}')" style="text-align:left;padding:8px 14px;">
+      <div style="color:#00ff88;font-size:0.9em;">${m.name}</div>
+      <div style="color:#556;font-size:0.65em;margin-top:2px;">${m.description.slice(0, 60)}${m.description.length > 60 ? '...' : ''}</div>
+    </div>`
+  ).join('');
+}
+setTimeout(populateMissions, 100);
 
 // ─── Auth Check ───
 const CESIUM_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJkZWFkZjE0NC04ZjA3LTQzMDYtYjE1Ni03MDhkYjQ2MTc0NGMiLCJpZCI6NDA2Njk4LCJpYXQiOjE3NzQwMTY0MzN9.m6LD7XKPhbPozNC9BnU9lfHew0jgximeVG15YeVgXEU';
@@ -645,8 +732,63 @@ async function initializeSim() {
     return h !== undefined ? h : 0;
   }
 
+  // ─── Init Systems ───
+  weatherSystem.init(viewer);
+
   // ─── Init Game (called from lobby LAUNCH) ───
   window._initGame = function() {
+    showLeaderboardOverlay = false;
+    showSummaryOverlay = false;
+
+    // Mission mode
+    if (selectedMission) {
+      const mData = missionSystem.startMission(selectedMission);
+      if (mData) {
+        const loc = mData.mission.location;
+        const lat = Cesium.Math.toRadians(loc.lat);
+        const lon = Cesium.Math.toRadians(loc.lon);
+        const alt = loc.alt;
+        const heading = Cesium.Math.toRadians(loc.heading || 0);
+        const acType = mData.mission.aircraft?.[0] || selectedAircraft;
+
+        game.setGameMode('coop');
+        game.init(acType, lat, lon, alt, heading);
+        game.state.speed = 200;
+        game.state.throttle = 0.7;
+        game.state.onGround = false;
+        game.state.gearDown = false;
+
+        // Set weather and time
+        if (mData.mission.weather) weatherSystem.setWeather(mData.mission.weather);
+        if (mData.mission.timeOfDay !== undefined) {
+          const date = Cesium.JulianDate.toDate(Cesium.JulianDate.now());
+          date.setHours(mData.mission.timeOfDay, 0, 0);
+          viewer.clock.currentTime = Cesium.JulianDate.fromDate(date);
+        }
+
+        // Spawn mission enemies
+        if (mData.mission.spawnEnemies) {
+          for (const spawn of mData.mission.spawnEnemies) {
+            if (spawn.delay && spawn.delay > 0) continue; // delayed spawns handled in update
+            for (let i = 0; i < spawn.count; i++) {
+              const angle = (i / spawn.count) * Math.PI * 2;
+              const spawnR = 2000 / 6378137;
+              const sLat = Cesium.Math.toRadians(spawn.lat) + spawnR * Math.cos(angle);
+              const sLon = Cesium.Math.toRadians(spawn.lon) + spawnR * Math.sin(angle);
+              const ai = new AIFighter(spawn.tier || 'veteran', spawn.type, sLat, sLon, spawn.alt, angle + Math.PI, spawn.team);
+              game.aiUnits.push(ai);
+            }
+          }
+        }
+
+        leaderboard.reset('mission', selectedMission);
+        game.paused = false;
+        gameActive = true;
+        return;
+      }
+    }
+
+    // Standard mode
     const loc = LOCATIONS.kjfk;
     const lat = Cesium.Math.toRadians(loc.lat);
     const lon = Cesium.Math.toRadians(loc.lon);
@@ -662,6 +804,7 @@ async function initializeSim() {
     game.state.targetLat = lat;
     game.state.targetLon = lon;
     game.state.targetAlt = alt;
+    leaderboard.reset(selectedMode);
     game.paused = false;
     gameActive = true;
   };
@@ -680,19 +823,24 @@ async function initializeSim() {
     const state = game.state;
 
     // Combat keys
-    if (k === ' ') { game.firing = true; game.fireWeapon(); e.preventDefault(); }
+    if (k === ' ') { game.firing = true; game.fireWeapon(); soundEngine.playMissileLaunch(); e.preventDefault(); }
     if (k === 'q') game.cycleWeapon();
     if (k === 'e') state.afterburner = !state.afterburner;
     if (k === 'x') game.deployFlares();
     if (k === 'z') game.deployChaff();
     if (k === 'escape') {
+      if (showLeaderboardOverlay) { showLeaderboardOverlay = false; return; }
+      if (showSummaryOverlay) { showSummaryOverlay = false; return; }
       gameActive = false;
       game.paused = true;
+      leaderboard.endGame(selectedAircraft);
+      soundEngine.setMissileWarning(false);
       document.getElementById('game-lobby').classList.remove('hidden');
+      populateMissions();
     }
 
     // Flight keys
-    if (k === 'g' && !(state.onGround && state.speed > 5)) state.gearDown = !state.gearDown;
+    if (k === 'g' && !(state.onGround && state.speed > 5)) { state.gearDown = !state.gearDown; soundEngine.playGearToggle(); }
     if (k === 'b') state.speedBrake = !state.speedBrake;
     if (k === 'c') cameraMode = (cameraMode + 1) % 4;
     if (k === 'n') cycleTimeOfDay();
@@ -702,6 +850,18 @@ async function initializeSim() {
       state.autopilot = !state.autopilot;
       showMessage(state.autopilot ? 'AUTOPILOT: TOUR GUIDE ON' : 'AUTOPILOT: OFF');
     }
+    if (k === 'm') {
+      const w = weatherSystem.cycleWeather();
+      showMessage(`WEATHER: ${w.toUpperCase()}`);
+    }
+    if (k === 'v') {
+      const vol = soundEngine.masterGain ? soundEngine.masterGain.gain.value : 0.5;
+      const newVol = vol > 0.8 ? 0 : vol + 0.25;
+      soundEngine.setMasterVolume(newVol);
+      showMessage(`VOLUME: ${Math.round(newVol * 100)}%`);
+    }
+    if (k === 'l') { showLeaderboardOverlay = !showLeaderboardOverlay; }
+    if (k === 'tab') { e.preventDefault(); }
     if (k === 'k') {
       if (navigator.serviceWorker?.controller) {
         navigator.serviceWorker.controller.postMessage('cache-stats');
@@ -1379,6 +1539,38 @@ async function initializeSim() {
     if (gameActive) {
       game.drawCombatHUD(ctx, w, h);
     }
+
+    // ─── Weather particles ───
+    weatherSystem.drawParticles(ctx, w, h, state.speed, state.heading);
+
+    // ─── Weather indicator ───
+    const weather = weatherSystem.getWeather();
+    if (weather !== 'clear') {
+      ctx.font = '11px "Courier New"';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = 'rgba(0,255,136,0.5)';
+      ctx.fillText(`WX: ${weather.toUpperCase()}`, 15, h - 30);
+    }
+
+    // ─── Score HUD ───
+    if (gameActive) {
+      leaderboard.drawScoreHUD(ctx, w, h, isSmall ? 0.7 : 1);
+    }
+
+    // ─── Mission HUD ───
+    if (selectedMission && missionSystem.getCurrentMission()) {
+      missionSystem.drawMissionHUD(ctx, w, h);
+    }
+
+    // ─── Leaderboard overlay ───
+    if (showLeaderboardOverlay) {
+      leaderboard.drawLeaderboard(ctx, w, h);
+    }
+
+    // ─── Game summary overlay ───
+    if (showSummaryOverlay) {
+      leaderboard.drawGameSummary(ctx, w, h);
+    }
   }
 
   // ─── Loading Complete → Show Lobby ───
@@ -1598,8 +1790,52 @@ async function initializeSim() {
       }
     }
 
+    // Apply weather turbulence to controls
+    const turb = weatherSystem.getTurbulence();
+    controlInput.pitchInput += turb.pitch;
+    controlInput.rollInput += turb.roll;
+    controlInput.yawInput += turb.yaw;
+
+    // Track kills for leaderboard (before update, snapshot AI count)
+    const aiBefore = game.aiUnits.filter(a => a.alive).length;
+    const waveBefore = game.scores.wave;
+
     // Update game (physics, AI, weapons, combat)
     game.update(dt, controlInput, getTerrainHeight);
+
+    // Detect kills for leaderboard + play explosion sounds
+    const aiAfter = game.aiUnits.filter(a => a.alive).length;
+    const newKills = aiBefore - aiAfter;
+    for (let i = 0; i < newKills; i++) {
+      leaderboard.addKill('veteran', 'combat');
+      soundEngine.playExplosion(2000);
+    }
+    if (game.scores.wave > waveBefore) leaderboard.addWaveClear(game.scores.wave);
+
+    // Update systems
+    weatherSystem.update(dt);
+    soundEngine.update(state, dt);
+    leaderboard.update(dt, state.alive, state.health);
+
+    // Sound: missile warning
+    const incomingMissiles = game.weaponManager.missiles.filter(m => m.alive && m.targetId === 'player');
+    soundEngine.setMissileWarning(incomingMissiles.length > 0);
+
+    // Sound: gun burst
+    if (game.firing && state.alive) soundEngine.playGunBurst();
+
+    // Mission updates
+    if (selectedMission && missionSystem.getCurrentMission()) {
+      const events = missionSystem.update(dt, state, game.aiUnits);
+      if (events.includes('mission_complete')) {
+        showMessage('MISSION COMPLETE!');
+        leaderboard.endGame(selectedAircraft);
+        showSummaryOverlay = true;
+      }
+      if (events.includes('mission_failed')) {
+        showMessage('MISSION FAILED');
+      }
+    }
 
     // Update Cesium world entities (AI boxes, missile trails, explosions)
     updateWorldEntities();

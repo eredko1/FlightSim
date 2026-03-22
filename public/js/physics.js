@@ -60,6 +60,12 @@ export function updatePhysics(state, input, dt, getTerrainHeight) {
   const ac = AIRCRAFT[state.aircraftType];
   if (!ac) return;
 
+  // ─── Helicopter flight model ───
+  if (ac.isHelicopter) {
+    updateHelicopterPhysics(state, input, dt, ac, getTerrainHeight);
+    return;
+  }
+
   // ─── Control Input ───
   let { pitchInput, rollInput, yawInput } = input;
 
@@ -224,6 +230,105 @@ export function updatePhysics(state, input, dt, getTerrainHeight) {
   state.vs = verticalSpeed;
 
   // Health-based damage effects
+  if (state.health <= 0 && state.alive) {
+    state.alive = false;
+    state.crashed = true;
+  }
+}
+
+function updateHelicopterPhysics(state, input, dt, ac, getTerrainHeight) {
+  let { pitchInput, rollInput, yawInput } = input;
+
+  // Helicopters have full control authority at any speed
+  const pitchRateMax = ac.pitchRateMax;
+  const rollRateMax = ac.rollRateMax;
+  const yawRateMax = ac.yawRateMax;
+
+  state.pitchRate += (pitchInput * pitchRateMax - state.pitchRate * 4) * dt;
+  state.rollRate += (rollInput * rollRateMax - state.rollRate * 4) * dt;
+  state.yawRate += (yawInput * yawRateMax - state.yawRate * 3) * dt;
+
+  state.pitch += state.pitchRate * dt;
+  state.roll += state.rollRate * dt;
+  state.heading += state.yawRate * dt;
+
+  // Auto-level when no input
+  if (Math.abs(rollInput) < 0.1) state.roll *= (1 - 3.0 * dt);
+  if (Math.abs(pitchInput) < 0.1) state.pitch *= (1 - 2.0 * dt);
+  state.pitch = clamp(state.pitch, -0.5, 0.5);
+  state.roll = clamp(state.roll, -0.6, 0.6);
+
+  // Throttle = collective (vertical thrust)
+  if (input.throttleUp) state.throttle = Math.min(1, state.throttle + dt * 0.8);
+  if (input.throttleDown) state.throttle = Math.max(0, state.throttle - dt * 0.8);
+
+  // Fuel
+  state.fuel -= state.throttle * 0.15 * dt;
+  if (state.fuel <= 0) { state.fuel = 0; state.throttle = 0; }
+
+  // Vertical: collective minus gravity
+  const liftForce = state.throttle * ac.maxThrust;
+  const weight = ac.mass * GRAVITY;
+  const netVertical = (liftForce - weight) / ac.mass;
+
+  state.vs += netVertical * dt;
+  state.vs *= (1 - 0.5 * dt); // drag on vertical
+
+  // Horizontal: tilt-based movement
+  const horizAccel = GRAVITY * Math.sin(state.pitch) * 1.5;
+  const sideAccel = GRAVITY * Math.sin(state.roll) * 0.8;
+
+  const forwardSpeed = horizAccel;
+  state.speed += forwardSpeed * dt;
+
+  // Drag proportional to speed
+  state.speed *= (1 - 0.3 * dt);
+  state.speed = clamp(state.speed, -ac.maxSpeed * 0.3, ac.maxSpeed);
+
+  state.mach = Math.abs(state.speed) / SPEED_OF_SOUND;
+  state.aoa = state.pitch;
+  state.stalling = false;
+
+  // Position integration
+  const horizontalSpeed = state.speed;
+  state.altitudeMSL += state.vs * dt;
+  state.latitude += (horizontalSpeed * Math.cos(state.heading) * dt) / EARTH_RADIUS;
+  state.longitude += (horizontalSpeed * Math.sin(state.heading) * dt) / (EARTH_RADIUS * Math.cos(state.latitude));
+
+  // Lateral drift from roll
+  state.latitude += (-sideAccel * Math.sin(state.heading) * dt * dt) / EARTH_RADIUS;
+  state.longitude += (sideAccel * Math.cos(state.heading) * dt * dt) / (EARTH_RADIUS * Math.cos(state.latitude));
+
+  // Turn from yaw
+  state.heading += state.yawRate * dt;
+
+  // Terrain
+  const terrainH = getTerrainHeight(state.longitude, state.latitude);
+  if (terrainH !== undefined && terrainH !== null) state.terrainHeight = terrainH;
+  state.agl = state.altitudeMSL - state.terrainHeight;
+
+  const gearHeight = state.gearDown ? 5 : 3;
+  state.onGround = state.agl <= gearHeight + 0.5;
+
+  if (state.onGround) {
+    state.altitudeMSL = state.terrainHeight + gearHeight;
+    state.agl = gearHeight;
+    if (state.vs < 0) state.vs = 0;
+    state.speed *= (1 - 2.0 * dt);
+
+    // Crash if descending too fast
+    if (state.vs < -8) {
+      state.crashed = true;
+      state.alive = false;
+    }
+  }
+
+  // G-Force (simplified for helicopter)
+  state.gForce = 1 + netVertical / GRAVITY;
+  state.gSustained = state.gSustained * 0.95 + state.gForce * 0.05;
+  state.gEffectVision = 1.0; // helicopters don't pull enough G for effects
+
+  // Health
   if (state.health <= 0 && state.alive) {
     state.alive = false;
     state.crashed = true;
