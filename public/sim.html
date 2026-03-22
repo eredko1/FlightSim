@@ -679,9 +679,13 @@ async function initializeSim() {
 
   scene.globe.enableLighting = true;
   scene.globe.depthTestAgainstTerrain = true;
+  scene.globe.maximumScreenSpaceError = 1.5; // sharper terrain (default 2)
+  scene.globe.tileCacheSize = 200; // cache more tiles
+  scene.globe.preloadSiblings = true; // preload nearby tiles
+  scene.globe.preloadAncestors = true; // preload parent tiles for fast LOD
   scene.fog.enabled = true;
-  scene.fog.density = 0.0003;
-  scene.fog.screenSpaceErrorFactor = 4;
+  scene.fog.density = 0.0002;
+  scene.fog.screenSpaceErrorFactor = 2; // load higher-res tiles before fog hides them
   scene.highDynamicRange = true;
   scene.postProcessStages.fxaa.enabled = true;
   scene.skyAtmosphere.brightnessShift = 0.0;
@@ -714,6 +718,9 @@ async function initializeSim() {
   });
 
   const loadBuildings = Cesium.createOsmBuildingsAsync().then(tileset => {
+    tileset.maximumScreenSpaceError = 4; // load buildings at higher detail
+    tileset.preferLeaves = true; // prefer detailed leaf tiles
+    tileset.preloadWhenHidden = true;
     viewer.scene.primitives.add(tileset);
     setLoad(70, '3D buildings loaded');
   }).catch(err => {
@@ -1520,11 +1527,9 @@ async function initializeSim() {
       if (blink) ctx.fillText('STALL', cx, cy + (isSmall ? 80 : 140));
     }
 
-    // Death / crash
+    // Death / crash (clean text only, no red overlay)
     if (!state.alive || state.crashed) {
-      ctx.fillStyle = 'rgba(255,0,0,0.15)';
-      ctx.fillRect(0, 0, w, h);
-      ctx.fillStyle = '#ff0000';
+      ctx.fillStyle = '#ff4444';
       ctx.font = `bold ${isSmall ? 28 : 36}px "Courier New"`;
       ctx.textAlign = 'center';
       ctx.fillText(state.crashed ? 'CRASH' : 'DESTROYED', cx, cy - 10);

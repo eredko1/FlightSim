@@ -284,22 +284,12 @@ export class CombatHUD {
 
     const intensity = 1 - state.gEffectVision;
 
-    if (state.gSustained > 5) {
-      // Blackout (tunnel vision -> black)
-      ctx.fillStyle = `rgba(0,0,0,${intensity * 0.9})`;
-      ctx.fillRect(0, 0, w, h);
-
-      // Tunnel vision: clear center, dark edges
-      if (intensity < 0.7) {
-        const gradient = ctx.createRadialGradient(w/2, h/2, w * 0.15, w/2, h/2, w * 0.5);
-        gradient.addColorStop(0, 'rgba(0,0,0,0)');
-        gradient.addColorStop(1, `rgba(0,0,0,${intensity})`);
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, w, h);
-      }
-    } else if (state.gSustained < -1) {
-      // Redout
-      ctx.fillStyle = `rgba(200,0,0,${intensity * 0.6})`;
+    // Tunnel vision effect only (dark edges, no red)
+    if (intensity > 0.05) {
+      const gradient = ctx.createRadialGradient(w/2, h/2, w * 0.15, w/2, h/2, w * 0.5);
+      gradient.addColorStop(0, 'rgba(0,0,0,0)');
+      gradient.addColorStop(1, `rgba(0,0,0,${Math.min(0.8, intensity * 0.7)})`);
+      ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, w, h);
     }
   }
