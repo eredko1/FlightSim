@@ -65,8 +65,8 @@ export class AIFighter {
     this.gEffectVision = 1.0;
     this.gSustained = 1.0;
 
-    // AI state machine
-    this.state = 'patrol'; // patrol, engage, attack, evade, extend
+    // AI state machine — start engaged if spawned close to enemies
+    this.state = 'engage'; // patrol, engage, attack, evade, extend
     this.target = null;
     this.reactionTimer = 0;
     this.stateTimer = 0;
@@ -131,8 +131,8 @@ export class AIFighter {
 
     switch (this.state) {
       case 'patrol':
-        if (closest && dist < 15000) {
-          if (this.reactionTimer > this.tier.reactionTime) {
+        if (closest && dist < 25000) {
+          if (this.reactionTimer > this.tier.reactionTime * 0.5) {
             this.target = closest;
             this.state = 'engage';
             this.stateTimer = 0;

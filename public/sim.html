@@ -555,6 +555,10 @@ window.selectMission = function(id) {
 window.startGame = function() {
   soundEngine.init(); // needs user gesture
   document.getElementById('game-lobby').classList.add('hidden');
+  // Hide help overlay on game start
+  helpVisible = false;
+  const hint = document.getElementById('controls-hint');
+  if (hint) { hint.classList.add('hidden'); hint.style.opacity = '0'; }
   if (window._initGame) window._initGame();
 };
 
@@ -767,16 +771,17 @@ async function initializeSim() {
           viewer.clock.currentTime = Cesium.JulianDate.fromDate(date);
         }
 
-        // Spawn mission enemies
+        // Spawn mission enemies (close to player)
         if (mData.mission.spawnEnemies) {
           for (const spawn of mData.mission.spawnEnemies) {
-            if (spawn.delay && spawn.delay > 0) continue; // delayed spawns handled in update
+            if (spawn.delay && spawn.delay > 0) continue;
             for (let i = 0; i < spawn.count; i++) {
               const angle = (i / spawn.count) * Math.PI * 2;
-              const spawnR = 2000 / 6378137;
-              const sLat = Cesium.Math.toRadians(spawn.lat) + spawnR * Math.cos(angle);
-              const sLon = Cesium.Math.toRadians(spawn.lon) + spawnR * Math.sin(angle);
-              const ai = new AIFighter(spawn.tier || 'veteran', spawn.type, sLat, sLon, spawn.alt, angle + Math.PI, spawn.team);
+              const spawnR = 3000 / 6378137; // 3km from player
+              const sLat = lat + spawnR * Math.cos(angle);
+              const sLon = lon + spawnR * Math.sin(angle) / Math.cos(lat);
+              const sAlt = alt + 200 + Math.random() * 500;
+              const ai = new AIFighter(spawn.tier || 'veteran', spawn.type, sLat, sLon, sAlt, angle + Math.PI, spawn.team);
               game.aiUnits.push(ai);
             }
           }
@@ -1026,20 +1031,20 @@ async function initializeSim() {
         const entity = viewer.entities.add({
           position: Cesium.Cartesian3.fromRadians(ai.longitude, ai.latitude, ai.altitudeMSL),
           box: {
-            dimensions: new Cesium.Cartesian3(25, 5, 18),
+            dimensions: new Cesium.Cartesian3(50, 12, 35),
             material: isFriendly
-              ? Cesium.Color.DODGERBLUE.withAlpha(0.8)
-              : Cesium.Color.RED.withAlpha(0.8),
+              ? Cesium.Color.DODGERBLUE.withAlpha(0.9)
+              : Cesium.Color.RED.withAlpha(0.9),
           },
           label: {
             text: ai.name,
-            font: '11px Courier New',
-            fillColor: Cesium.Color.WHITE,
+            font: 'bold 14px Courier New',
+            fillColor: isFriendly ? Cesium.Color.CYAN : Cesium.Color.fromCssColorString('#ff4444'),
             outlineColor: Cesium.Color.BLACK,
-            outlineWidth: 2,
+            outlineWidth: 3,
             style: Cesium.LabelStyle.FILL_AND_OUTLINE,
             pixelOffset: new Cesium.Cartesian2(0, -20),
-            distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 12000),
+            distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 30000),
           },
         });
         aiCesiumEntities.set(ai.id, entity);
@@ -1068,9 +1073,9 @@ async function initializeSim() {
                 Cesium.Cartesian3.fromRadians(p.lon, p.lat, p.alt)
               );
             }, false),
-            width: 2,
+            width: 5,
             material: new Cesium.PolylineGlowMaterialProperty({
-              glowPower: 0.3,
+              glowPower: 0.5,
               color: Cesium.Color.ORANGE,
             }),
           },
@@ -1093,7 +1098,7 @@ async function initializeSim() {
           position: Cesium.Cartesian3.fromRadians(exp.lon, exp.lat, exp.alt),
           billboard: {
             image: createExplosionCanvas(),
-            scale: 0.5 + exp.age * 2,
+            scale: 2.0 + exp.age * 5,
             color: Cesium.Color.ORANGE.withAlpha(1 - exp.age / exp.maxAge),
           },
         });
@@ -1536,6 +1541,29 @@ async function initializeSim() {
       ctx.fillText(currentMessage, cx, isSmall ? 55 : 120);
     }
 
+    // ─── Muzzle flash + tracer lines when firing ───
+    if (game.firing && state.alive && game.weaponState && game.weaponState.selectedIndex === 0 && game.weaponState.gunAmmo > 0) {
+      // Muzzle flash
+      const flashSize = 8 + Math.random() * 12;
+      ctx.fillStyle = `rgba(255,${150 + Math.random() * 100},0,${0.5 + Math.random() * 0.3})`;
+      ctx.beginPath();
+      ctx.arc(cx, cy, flashSize, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Tracer lines shooting forward
+      for (let t = 0; t < 3; t++) {
+        const tx = cx + (Math.random() - 0.5) * 30;
+        const ty = cy + (Math.random() - 0.5) * 30;
+        const len = 40 + Math.random() * 80;
+        ctx.strokeStyle = `rgba(255,${200 + Math.random() * 55},0,${0.4 + Math.random() * 0.3})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(tx, ty);
+        ctx.lineTo(tx + (Math.random() - 0.5) * 10, ty - len);
+        ctx.stroke();
+      }
+    }
+
     // ─── Combat HUD overlay ───
     if (gameActive) {
       game.drawCombatHUD(ctx, w, h);
@@ -1585,7 +1613,7 @@ async function initializeSim() {
     // Show game lobby
     document.getElementById('game-lobby').classList.remove('hidden');
 
-    // Show help briefly
+    // Show help briefly (3 seconds)
     helpVisible = true;
     const hint = document.getElementById('controls-hint');
     hint.classList.remove('hidden');
@@ -1596,7 +1624,7 @@ async function initializeSim() {
         hint.classList.add('hidden');
         hint.style.opacity = '0';
       }
-    }, 8000);
+    }, 3000);
   }, 1500);
 
   // ─── Mobile Touch Controls ───
