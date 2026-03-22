@@ -61,12 +61,15 @@ export class CombatHUD {
   }
 
   drawHealthBar(ctx, cx, cy, w, state, scale) {
-    const barW = 200 * scale;
-    const barH = 6 * scale;
-    const x = cx - barW / 2;
-    const y = cy + 60 * scale;
+    // Only show health bar when damaged
+    if (state.health >= 100) return;
 
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    const barW = 120 * scale;
+    const barH = 4 * scale;
+    const x = cx - barW / 2;
+    const y = cy + 80 * scale;
+
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.fillRect(x - 1, y - 1, barW + 2, barH + 2);
 
     const pct = state.health / 100;
@@ -77,11 +80,10 @@ export class CombatHUD {
     ctx.fillStyle = color;
     ctx.fillRect(x, y, barW * pct, barH);
 
-    // HP text
-    ctx.font = `${10 * scale}px "Courier New"`;
+    ctx.font = `${9 * scale}px "Courier New"`;
     ctx.fillStyle = color;
     ctx.textAlign = 'center';
-    ctx.fillText(`${Math.round(state.health)}%`, cx, y + barH + 12 * scale);
+    ctx.fillText(`HP ${Math.round(state.health)}%`, cx, y + barH + 10 * scale);
   }
 
   drawWeaponPanel(ctx, w, h, state, weaponState, scale) {

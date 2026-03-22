@@ -137,8 +137,8 @@ export class Game {
       }
     }
 
-    // ─── Wave management (co-op) ───
-    if (this.gameMode === 'coop') {
+    // ─── Wave management (all combat modes) ───
+    if (this.gameMode === 'coop' || this.gameMode === 'tdm' || this.gameMode === 'ffa') {
       if (this.aiUnits.length === 0 && this.waveActive) {
         this.waveActive = false;
         this.waveTimer = 5; // 5 seconds between waves
